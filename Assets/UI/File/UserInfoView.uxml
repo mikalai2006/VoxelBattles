@@ -1,0 +1,37 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Styles/base.uss?fileID=7433441132597879392&amp;guid=92cb09e88af8a8641b907a6c643b8511&amp;type=3#base"/>
+    <Style src="project://database/Assets/UI/Styles/tailwindcss_base.uss?fileID=7433441132597879392&amp;guid=355bdeddf02e75247b03301baba68a71&amp;type=3#tailwindcss_base"/>
+    <ui:VisualElement picking-mode="Ignore" class="panel" style="flex-grow: 1;">
+        <ui:VisualElement class="flex-row items-center justify-center p-2" style="flex-grow: 1; flex-direction: row;">
+            <ui:VisualElement name="SpriteAva" style="background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;); width: 100px; height: 100px; align-items: center; align-self: center;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="NameBox" style="flex-grow: 1; flex-direction: row;">
+            <ui:VisualElement name="RankBg" style="background-image: url(&quot;project://database/Assets/Sprites/Use/rankBg.png?fileID=21300000&amp;guid=dde7fec3ef306b24d93992178622fab7&amp;type=3#rankBg&quot;); width: 83px; height: 80px; flex-shrink: 0; position: absolute; margin-left: -12px; -unity-background-image-tint-color: rgb(144, 91, 91); margin-top: -8px; display: none;"/>
+            <ui:VisualElement name="RankImage" style="background-image: url(&quot;project://database/Assets/Sprites/Use/rank.png?fileID=205552614&amp;guid=4c400c1f441623a4db66cae3d5b50846&amp;type=3#rank_5&quot;); width: 60px; height: 60px; flex-shrink: 0; -unity-background-image-tint-color: rgb(238, 221, 130);"/>
+            <ui:VisualElement picking-mode="Ignore" class="p-1" style="flex-grow: 1; flex-direction: row;">
+                <ui:VisualElement style="flex-grow: 1;">
+                    <ui:Label text="Name" name="Name" class="text-primary m-0 p-0 text-xl"/>
+                    <ui:Label text="Name" name="Rank" class="text-secondary m-0 p-0 text-base"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" name="CoinBox" class="p-1 border-t flex-row items-center" style="border-top-color: rgba(255, 255, 255, 0.02);">
+            <ui:VisualElement picking-mode="Ignore" name="SpriteCoin" class="bg-tint-accent w-12 h-12" style="background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;);"/>
+            <ui:VisualElement picking-mode="Ignore" style="flex-grow: 1;">
+                <ui:Label text="Name" name="Coin" class="text-primary px-2 text-lg"/>
+            </ui:VisualElement>
+            <ui:Button name="AddCoin" class="button-success button-rectangle">
+                <ui:VisualElement name="SpritePlus" style="flex-grow: 1; background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;);"/>
+            </ui:Button>
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" name="CubeBox" class="p-1 mb-2 flex-row items-center border-t" style="border-top-color: rgba(255, 255, 255, 0.02);">
+            <ui:VisualElement picking-mode="Ignore" name="SpriteCubes" class="bg-tint-secondary w-12 h-12" style="background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;);"/>
+            <ui:VisualElement picking-mode="Ignore" style="flex-grow: 1;">
+                <ui:Label text="Name" name="Cube" class="text-primary px-2 text-lg"/>
+            </ui:VisualElement>
+            <ui:Button name="AddCube" class="button-success button-rectangle">
+                <ui:VisualElement name="SpritePlus" style="flex-grow: 1; background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;);"/>
+            </ui:Button>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

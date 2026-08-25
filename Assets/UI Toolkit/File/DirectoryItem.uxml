@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/UnityBase.uss?fileID=7433441132597879392&amp;guid=1dc2aea145fe99748928c99483204a80&amp;type=3#UnityBase" />
+    <ui:VisualElement name="VisualElement" class="font" style="flex-grow: 0;">
+        <ui:VisualElement name="DirectoryItem" class="p-1" style="flex-direction: row; flex-grow: 1; align-items: center; border-left-color: rgba(0, 0, 0, 0.2); border-right-color: rgba(0, 0, 0, 0.2); border-top-color: rgba(0, 0, 0, 0.2); border-bottom-color: rgba(0, 0, 0, 0.2); border-bottom-width: 1px;">
+            <ui:VisualElement class="px-1" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row;">
+                <ui:Label tabindex="-1" text="Label" display-tooltip-when-elided="true" name="Word" class="font-bold p-0 m-0 text-primary" style="flex-shrink: 1;" />
+            </ui:VisualElement>
+            <ui:VisualElement style="background-color: rgba(0, 0, 0, 0);">
+                <ui:Button display-tooltip-when-elided="true" name="GoRead" text="#goread" class="button text-xs m-0 transparent p-1 text-primary" style="flex-grow: 1;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

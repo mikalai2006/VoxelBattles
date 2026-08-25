@@ -1,0 +1,16 @@
+:root {
+}
+
+.icon {
+    width: 25px;
+    height: 25px;
+    flex-shrink: 0;
+}
+
+.label {
+    text-overflow: ellipsis;
+}
+
+.info_item {
+    height: 30px;
+}

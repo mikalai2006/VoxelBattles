@@ -1,0 +1,28 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:Template name="BtnUserShortInfo" src="project://database/Assets/UI%20Toolkit/File/BtnUserShortInfo.uxml?fileID=9197481963319205126&amp;guid=8621f5f7b62642b47adeedb4dbb5cba7&amp;type=3#BtnUserShortInfo" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:VisualElement name="Blok" class="b-rounded" style="background-color: rgba(0, 0, 0, 0.05); padding-left: 20px; padding-right: 20px; padding-top: 20px; padding-bottom: 20px;">
+        <ui:VisualElement class="p-2 b-rounded" style="flex-grow: 1; margin-bottom: 10px; align-items: center;">
+            <ui:Instance template="BtnUserShortInfo" name="BtnUserShortInfo" />
+        </ui:VisualElement>
+        <ui:VisualElement style="background-color: rgba(0, 0, 0, 0); flex-grow: 0;">
+            <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0);">
+                <ui:Label tabindex="-1" text="Слова \r\nрусского языка" display-tooltip-when-elided="true" name="NameFile" class="m-0 text-lg text-primary" style="-unity-text-align: upper-center; -unity-font-style: bold; padding-bottom: 10px; white-space: normal; display: none;" />
+                <ui:VisualElement name="ProgressBlok" style="background-color: rgba(0, 0, 0, 0); display: flex; flex-grow: 1;">
+                    <ui:Label tabindex="-1" text="#actualprogress" display-tooltip-when-elided="true" class="m-0 p-0 text-secondary text-xss" style="-unity-text-align: upper-center;" />
+                    <ui:Label tabindex="-1" text="Major2" display-tooltip-when-elided="true" name="Status" class="m-0 p-0 text-md text-secondary" style="-unity-font-style: bold; -unity-text-align: upper-center; margin-bottom: 5px; display: none;" />
+                    <ui:Label tabindex="-1" text="Found 1212 words. Found 1212 words. Found 1212 words." display-tooltip-when-elided="true" name="FoundWords" class="m-0 p-0 text-secondary text-xs" style="-unity-text-align: upper-center; white-space: normal;" />
+                    <ui:VisualElement style="margin-left: 3px; margin-right: 3px; margin-top: 3px; margin-bottom: 3px;">
+                        <ui:VisualElement name="ProgressBarBox" class="level_blok_progress_wrap" style="height: 10px; background-color: rgba(0, 0, 0, 0.33); border-top-left-radius: 5px; border-bottom-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; position: relative;">
+                            <ui:VisualElement name="ProgressBar" class="level_blok_progress_bar" style="width: 75px;" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement style="flex-grow: 1; align-items: center; margin-top: 10px;">
+            <ui:Button text="#loadgame" display-tooltip-when-elided="true" name="LoadGameBtn" class="button text-primary" />
+            <ui:Button text="#newgame" display-tooltip-when-elided="true" name="NewGameBtn" class="button text-primary" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

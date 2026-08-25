@@ -1,0 +1,7 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Stylesheet.uss?fileID=7433441132597879392&amp;guid=6b61696ea445fa94cbe7ddc09efd7d5a&amp;type=3#Stylesheet" />
+    <ui:VisualElement name="InfoItem" class="info_item" style="flex-direction: row; align-items: center;">
+        <ui:VisualElement name="InfoItemIcon" class="icon" style="background-image: url(&quot;project://database/Assets/Sprites/Use/gerb.png?fileID=1483736574&amp;guid=4a06dee038f38864980f5c69508583d0&amp;type=3#gerb_13&quot;);" />
+        <ui:Label text="Label" name="InfoItemLabel" class="label" />
+    </ui:VisualElement>
+</ui:UXML>

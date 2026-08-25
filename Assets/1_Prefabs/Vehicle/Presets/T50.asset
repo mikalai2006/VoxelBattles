@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fdcd6e98c7ab7040bb7bace7e018a49, type: 3}
+  m_Name: T50
+  m_EditorClassIdentifier: Assembly-CSharp::VehiclePresetAsset
+  presetName: T50
+  chassis: {fileID: 11400000, guid: 2cb4a751bcb58bf47bff457398a72546, type: 2}
+  tower: {fileID: 11400000, guid: 0834c04d0e1a15c49ba83642e0592471, type: 2}
+  muzzle: {fileID: 11400000, guid: 65a30c2ae72f02a4bac80e83d2c6fffc, type: 2}
+  wheelsPreset: {fileID: 11400000, guid: 230f786839e95094a81d604627c190d2, type: 2}

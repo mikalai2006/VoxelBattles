@@ -1,0 +1,138 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &598028877918975197
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7155107668084056528}
+  - component: {fileID: 65113378843317776}
+  m_Layer: 16
+  m_Name: VoxelMeshRender
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7155107668084056528
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 598028877918975197}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 10, y: 10, z: 10}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8051355149284033222}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &65113378843317776
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 598028877918975197}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1dd5ac469b5fb148893c52942031975, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VoxelMeshRender
+  maxPoolElements: 32
+  Config:
+    sOVoxelData: {fileID: 0}
+    _material: {fileID: 0}
+    _materialAlpha: {fileID: 0}
+    isOneMesh: 0
+    isGreedy: 0
+    shadowCastingMode: 0
+    isTile: 0
+    existCollider: 0
+    typeCollider: 0
+    physMaterial: {fileID: 0}
+    isConvex: 0
+    isTrigger: 0
+    isRigidbody: 0
+    isKinematic: 0
+    mass: 0
+    isGravity: 0
+    FreezePositionX: 0
+    FreezePositionY: 0
+    FreezePositionZ: 0
+    FreezeRotationX: 0
+    FreezeRotationY: 0
+    FreezeRotationZ: 0
+    rigidbodyInterpolation: 0
+    collisionDetection: 0
+    isDestructible: 0
+    useGlobalScale: 0
+    customScale: 0
+  colorsModify: []
+  _dataDetail:
+    ido: 
+    parentId: 
+    number: 0
+    nameConfig: 
+    type: 0
+    offset: {x: 0, y: 0, z: 0}
+    destroyVoxels:
+      values: []
+  Wrapper: {fileID: 0}
+--- !u!1 &5590035414102100999
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8051355149284033222}
+  - component: {fileID: 4083443818857011528}
+  m_Layer: 16
+  m_Name: BulletPrefab
+  m_TagString: Bullet
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8051355149284033222
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5590035414102100999}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7155107668084056528}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4083443818857011528
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5590035414102100999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4aeb103b0740d2d41886db7326b1b8e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Fast
+  voxelMeshRender: {fileID: 65113378843317776}
+  excludeMask:
+    serializedVersion: 2
+    m_Bits: 0
+  includeMask:
+    serializedVersion: 2
+    m_Bits: 0

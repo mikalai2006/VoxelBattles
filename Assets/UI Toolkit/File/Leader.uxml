@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row; align-items: center; padding-bottom: 5px;">
+        <ui:Label tabindex="-1" text="121" display-tooltip-when-elided="true" name="Rank" class="m-0 text-primary text-md p-0 px-1 text-lg font-bold" style="-unity-text-align: upper-left;" />
+        <ui:VisualElement name="Ava" class="b-rounded" style="flex-grow: 0; width: 40px; height: 40px; background-image: url(&apos;project://database/Assets/Sprites/128/User128.png?fileID=2800000&amp;guid=d94185b46cb54c14f94d79544f773b22&amp;type=3#User128&apos;); flex-shrink: 0;" />
+        <ui:VisualElement class="px-1" style="align-items: flex-start;">
+            <ui:Label tabindex="-1" text="Mikalai2006 Mikalai2006Mikalai2006 Mikalai2006 Mikalai2006" display-tooltip-when-elided="true" name="Name" class="m-0 text-md p-0 text-primary" style="-unity-text-align: upper-left; white-space: normal; flex-shrink: 1; flex-grow: 1;" />
+            <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="Score" class="m-0 text-primary text-xs p-0 text-secondary" style="-unity-font-style: bold;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

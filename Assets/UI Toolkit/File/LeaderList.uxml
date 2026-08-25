@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:Template name="Leader" src="project://database/Assets/UI%20Toolkit/File/Leader.uxml?fileID=9197481963319205126&amp;guid=9757e6dc2949782429ee42fb4930b862&amp;type=3#Leader" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:VisualElement style="max-width: 200px;">
+        <ui:VisualElement style="flex-grow: 1;">
+            <ui:Label tabindex="-1" text="#leaderboard" display-tooltip-when-elided="true" class="m-0 text-primary text-md" style="-unity-font-style: bold;" />
+            <ui:VisualElement name="LeaderList" style="flex-grow: 0;">
+                <ui:Instance template="Leader" name="Leader" />
+                <ui:Instance template="Leader" name="Leader" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

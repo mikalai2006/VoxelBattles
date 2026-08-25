@@ -1,0 +1,49 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Settings.uss?fileID=7433441132597879392&amp;guid=88dfc651dba86d4488abaaa61bc6b672&amp;type=3#Settings" />
+    <ui:VisualElement name="GameBar" class="font" style="background-color: rgba(0, 0, 0, 0); align-items: center; width: 450px; align-self: center;">
+        <ui:VisualElement style="flex-grow: 0; background-color: rgba(0, 0, 0, 0); flex-direction: row; align-items: center; justify-content: space-between; max-width: 400px; width: 380px;">
+            <ui:Button display-tooltip-when-elided="true" name="MenuBtn" class="button_circle btn">
+                <ui:VisualElement name="ImgCog" style="flex-grow: 1; background-image: url(&apos;project://database/Assets/Sprites/128/Cog128.png?fileID=2800000&amp;guid=fe7f28583815e944993cdb808f259b29&amp;type=3#Cog128&apos;);" />
+            </ui:Button>
+            <ui:VisualElement name="UserShortInfo" style="flex-grow: 0; background-color: rgba(0, 0, 0, 0);">
+                <ui:Button display-tooltip-when-elided="true" name="BtnUser" class="p-0 m-0 button_circle_long btn">
+                    <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row; flex-shrink: 1;">
+                        <ui:VisualElement name="UserCoinImg" style="background-image: url(&apos;project://database/Assets/Sprites/128/Cog128.png?fileID=2800000&amp;guid=fe7f28583815e944993cdb808f259b29&amp;type=3#Cog128&apos;); width: 40px; -unity-background-scale-mode: scale-to-fit;" />
+                        <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="UserCoin" class="p-0 m-0 text-secondary font-bold" style="-unity-text-align: middle-left; padding-right: 10px;" />
+                        <ui:VisualElement style="padding-left: 2px; padding-right: 2px; display: none;">
+                            <ui:VisualElement>
+                                <ui:Label tabindex="-1" text="Mikalai2006" display-tooltip-when-elided="true" name="UserName" class="text-xs p-0 text-secondary m-0" style="padding-left: 5px; -unity-text-align: middle-left;" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="font-bold" style="flex-direction: row; align-items: center;">
+                                <ui:VisualElement style="flex-direction: row; align-items: center; display: none;">
+                                    <ui:VisualElement name="UserRateImg" class="w4 h-4" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); background-image: url(&apos;project://database/Assets/Sprites/128/Rating128.png?fileID=2800000&amp;guid=54e35f220d7347e4f99f199862e81c5e&amp;type=3#Rating128&apos;);" />
+                                    <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="UserRate" class="p-0 m-0 text-secondary" style="-unity-text-align: middle-left;" />
+                                </ui:VisualElement>
+                                <ui:VisualElement style="flex-direction: row; align-items: center;">
+                                    <ui:VisualElement name="Ava" class="w4 h-4" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); background-image: url(&apos;project://database/Assets/Sprites/128/Rating128.png?fileID=2800000&amp;guid=54e35f220d7347e4f99f199862e81c5e&amp;type=3#Rating128&apos;);" />
+                                    <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="UserCoin" class="p-0 m-0 text-secondary" style="-unity-text-align: middle-left;" />
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:Button>
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-shrink: 0; align-items: center;" />
+            <ui:Button display-tooltip-when-elided="true" name="BtnLetter" class="p-0 m-0 button_circle_long btn">
+                <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row; flex-shrink: 1;">
+                    <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="LetterCount" class="p-0 m-0 text-secondary font-bold" style="-unity-text-align: middle-right; padding-left: 10px;" />
+                    <ui:VisualElement name="LetterImg" style="background-image: url(&apos;project://database/Assets/Sprites/128/Cog128.png?fileID=2800000&amp;guid=fe7f28583815e944993cdb808f259b29&amp;type=3#Cog128&apos;); width: 40px; -unity-background-scale-mode: scale-to-fit;" />
+                </ui:VisualElement>
+            </ui:Button>
+            <ui:Button display-tooltip-when-elided="true" name="ShopBtn" class="button_circle btn">
+                <ui:VisualElement name="ImgShop" style="flex-grow: 1; background-image: url(&apos;project://database/Assets/Sprites/128/Shop128.png?fileID=2800000&amp;guid=1ab9b49f9f0ed954fbbc36f707b39d3e&amp;type=3#Shop128&apos;);" />
+            </ui:Button>
+        </ui:VisualElement>
+        <ui:Button display-tooltip-when-elided="true" name="ChampionBtn" class="p-0 button_circle_long btn" style="position: absolute; width: 40px; height: 40px; border-top-left-radius: 10px; border-bottom-left-radius: 10px; border-top-right-radius: 10px; border-bottom-right-radius: 10px; border-left-color: rgba(0, 0, 0, 0); border-right-color: rgba(0, 0, 0, 0); border-top-color: rgba(0, 0, 0, 0); border-bottom-color: rgba(0, 0, 0, 0); margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 3px; padding-right: 3px; padding-top: 3px; padding-bottom: 3px; border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0;">
+            <ui:VisualElement name="ChampionImg" style="flex-grow: 1; flex-shrink: 0; background-image: url(&apos;project://database/Assets/Sprites/128/Champions128.png?fileID=2800000&amp;guid=e21fcfc7b44cd8e429acbac6e2d47e3a&amp;type=3#Champions128&apos;);">
+                <ui:Label tabindex="-1" text="1234" display-tooltip-when-elided="true" name="ChampionText" class="text-secondary text-xss" style="-unity-text-align: upper-center; margin-top: 28px; font-size: 8px; margin-left: 5px; display: none;" />
+            </ui:VisualElement>
+        </ui:Button>
+    </ui:VisualElement>
+</ui:UXML>

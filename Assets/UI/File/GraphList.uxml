@@ -1,0 +1,61 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:Template name="GraphListItem" src="project://database/Assets/UI/File/GraphListItem.uxml?fileID=9197481963319205126&amp;guid=95ac2ec791fb0a24d90c559b8a6d66a2&amp;type=3#GraphListItem"/>
+    <Style src="project://database/Assets/UI/Styles/tree.uss?fileID=7433441132597879392&amp;guid=795a0836535175341a8123d92a7ad646&amp;type=3#tree"/>
+    <Style src="project://database/Assets/UI/Styles/base1.uss?fileID=7433441132597879392&amp;guid=0d2d1561a57b70a4798a0a6b1324eaab&amp;type=3#base1"/>
+    <ui:VisualElement style="flex-grow: 1; background-image: url(&quot;project://database/Assets/Sprites/del/panel.png?fileID=2800000&amp;guid=9d50f45b634e63344a6c0559cbcae8db&amp;type=3#panel&quot;);">
+        <ui:Button name="BtnClose" class="btn" style="position: absolute; right: 50px; top: 30px; background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;); background-color: rgba(188, 188, 188, 0); width: 40px; height: 40px;"/>
+        <ui:Label text="#treeMachine" style="color: rgb(255, 255, 255); font-size: 20px; -unity-font-style: bold; -unity-text-align: upper-center;"/>
+        <ui:ScrollView usage-hints="DynamicColor" style="max-width: 900px; margin-top: 120px; margin-right: 100px; margin-bottom: 40px; margin-left: 60px;">
+            <ui:VisualElement name="TreeMachine" style="flex-grow: 1; flex-direction: row;">
+                <ui:VisualElement class="tree_col" style="flex-grow: 1; flex-shrink: 0;">
+                    <ui:Instance template="GraphListItem"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="tree_col" style="flex-grow: 0; flex-shrink: 0;">
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="tree_col" style="flex-grow: 1; flex-shrink: 0;">
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="tree_col" style="flex-grow: 1; flex-shrink: 0;">
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="tree_col" style="flex-grow: 1; flex-shrink: 0;">
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                    <ui:Instance template="GraphListItem"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:ScrollView>
+    </ui:VisualElement>
+    <UI.Components.DragScrollView scroll-deceleration-rate="0,135" elasticity="0,1" style="max-width: 900px; margin-top: 120px; margin-right: 100px; margin-bottom: 40px; margin-left: 60px; display: none;">
+        <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
+            <ui:VisualElement style="flex-grow: 1; flex-shrink: 0;">
+                <ui:Instance template="GraphListItem"/>
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 0; flex-shrink: 0;">
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1; flex-shrink: 0;">
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1; flex-shrink: 0;">
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1; flex-shrink: 0;">
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+                <ui:Instance template="GraphListItem"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </UI.Components.DragScrollView>
+</ui:UXML>

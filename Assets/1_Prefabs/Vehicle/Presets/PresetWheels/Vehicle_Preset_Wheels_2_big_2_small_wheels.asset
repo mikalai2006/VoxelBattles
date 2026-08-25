@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e76372ac3bab9f94986c0a1e898fa8b9, type: 3}
+  m_Name: Vehicle_Preset_Wheels_2_big_2_small_wheels
+  m_EditorClassIdentifier: Assembly-CSharp::VehiclePresetWheelAsset
+  moveSpeed: 40
+  rotationSpeed: 300
+  wheelSlots:
+  - offsetInVoxels: {x: 1, y: 2, z: -12}
+    wheelPartAsset: {fileID: 11400000, guid: d3ee37dfe9775e64da34421851d5441f, type: 2}
+    isRotatable: 1
+  - offsetInVoxels: {x: -1, y: 2, z: -12}
+    wheelPartAsset: {fileID: 11400000, guid: d3ee37dfe9775e64da34421851d5441f, type: 2}
+    isRotatable: 1
+  - offsetInVoxels: {x: 0.001, y: -2, z: 12}
+    wheelPartAsset: {fileID: 11400000, guid: 1b9e512270756164589f44db5bfeaefb, type: 2}
+    isRotatable: 1
+  - offsetInVoxels: {x: -0.001, y: -2, z: 12}
+    wheelPartAsset: {fileID: 11400000, guid: 1b9e512270756164589f44db5bfeaefb, type: 2}
+    isRotatable: 1

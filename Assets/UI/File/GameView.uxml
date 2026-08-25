@@ -1,0 +1,32 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Styles/root.uss?fileID=7433441132597879392&amp;guid=4ddc5132678afbf408db7c41bc4e926d&amp;type=3#root"/>
+    <Style src="project://database/Assets/UI/Styles/tailwindcss_base.uss?fileID=7433441132597879392&amp;guid=355bdeddf02e75247b03301baba68a71&amp;type=3#tailwindcss_base"/>
+    <Style src="project://database/Assets/UI/Styles/base.uss?fileID=7433441132597879392&amp;guid=92cb09e88af8a8641b907a6c643b8511&amp;type=3#base"/>
+    <ui:VisualElement picking-mode="Ignore" name="Wrapper" style="flex-grow: 1; flex-shrink: 0; width: 100%; height: 100%; flex-direction: row;">
+        <ui:VisualElement class="panel-primary" style="width: 50px; height: 50px; flex-shrink: 0; translate: 17px 0; display: none;"/>
+        <ui:VisualElement class="panel-primary" style="width: 50px; height: 50px; flex-shrink: 0; translate: 0 -22px; display: none;"/>
+        <ui:VisualElement name="DynamicWrapper" style="flex-grow: 1; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+            <CirclePricel picking-mode="Ignore" Color="rgba(255, 255, 255, 0.2)" Radius="60" Width="2" name="MachinePricel" LineCap="Round" LineWidth="1" CountLines="360" lineLength="2" EveryLongLength="90" LongLineLength="30" LongLineWidth="1" MaxAngle="360" ColorEveryLong="rgba(255, 255, 255, 0.2)" DisableRange="0%2C360" Margin="30" style="display: flex;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="ScreenElements" style="flex-grow: 1; position: absolute; top: 0; bottom: 0; right: 0; left: 0; flex-direction: row; align-items: flex-start; align-self: flex-start; align-content: flex-start; justify-content: flex-start; display: flex;">
+            <CircleProgress StartAngle="90" EndAngle="0" valueProgress="1" Width="7" Direction="CounterClockwise" Offset="0" Color="rgba(74, 253, 0, 0.39)" name="HPProgress" Radius="96"/>
+            <CircleProgress StartAngle="180" EndAngle="270" valueProgress="0.893" Width="7" Direction="Clockwise" Offset="0" Color="rgba(0, 201, 253, 0.39)" name="WeaponProgress" Radius="96"/>
+            <ui:VisualElement style="flex-grow: 1;">
+                <ui:Label text="789м" name="LabelDistance" class="text-white" style="position: absolute; left: 0; top: -130px;"/>
+                <CirclePricel Color="rgb(65, 65, 65)" Width="3" Radius="140" CountLines="120" LineWidth="1" lineLength="7" EveryLongLength="30" LongLineLength="70" MaxAngle="360" ColorEveryLong="rgba(255, 255, 255, 0.2)" LongLineWidth="1" DisableRange="0%2C95,181%2C275" LineCap="Round" name="ScreenPricel" Margin="40" style="display: flex;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="flex-row" style="flex-grow: 1;">
+            <ui:VisualElement name="TopSideBarBonusBox" class="p-10" style="flex-grow: 1;"/>
+            <ui:VisualElement style="flex-grow: 1;">
+                <ui:Button text="#btn_to_start_menu" name="ButtonExitGame" class="button button-primary"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="TopSideBarInfoBox" class="p-10" style="flex-grow: 1;"/>
+        </ui:VisualElement>
+        <UIToolkitLibrary.TopSideBarComponent name="TopSideBarBase" style="position: absolute; top: 0; left: 0; right: 0; display: none;"/>
+        <ui:VisualElement picking-mode="Ignore" style="flex-grow: 1; flex-direction: row; align-items: center; justify-content: center; align-content: center; align-self: center; position: absolute; top: 0; right: 0; left: 0; bottom: 0; display: none;">
+            <ui:VisualElement style="width: 100px; height: 100px; border-top-left-radius: 200px; border-top-right-radius: 200px; border-bottom-right-radius: 200px; border-bottom-left-radius: 200px; border-top-width: 3px; border-right-width: 3px; border-bottom-width: 3px; border-left-width: 3px; border-left-color: rgb(0, 217, 255); border-right-color: rgb(0, 217, 255); border-top-color: rgb(0, 217, 255); border-bottom-color: rgb(0, 217, 255); flex-grow: 1; max-height: 100px; flex-direction: row; max-width: 100px;"/>
+            <ui:VisualElement style="width: 50px; height: 50px; border-top-left-radius: 200px; border-top-right-radius: 200px; border-bottom-right-radius: 200px; border-bottom-left-radius: 200px; border-top-width: 5px; border-right-width: 5px; border-bottom-width: 5px; border-left-width: 5px; border-left-color: rgb(83, 255, 0); border-right-color: rgb(83, 255, 0); border-top-color: rgb(83, 255, 0); border-bottom-color: rgb(83, 255, 0); position: absolute;"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

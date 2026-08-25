@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:Template name="LevelSection" src="project://database/Assets/UI%20Toolkit/File/LevelSection.uxml?fileID=9197481963319205126&amp;guid=c0b3145af63afb547a7278c9d0b553af&amp;type=3#LevelSection" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/UnityBase.uss?fileID=7433441132597879392&amp;guid=1dc2aea145fe99748928c99483204a80&amp;type=3#UnityBase" />
+    <ui:VisualElement name="LevelsBlok" class="font p-2" style="background-color: rgba(0, 0, 0, 0.43); flex-grow: 1;">
+        <ui:VisualElement name="LevelsBlokWrapper" style="align-items: stretch; justify-content: center; flex-grow: 1; align-self: center; width: 380px; height: 100%; border-top-left-radius: 10px; border-bottom-left-radius: 10px; border-top-right-radius: 10px; border-bottom-right-radius: 10px;">
+            <ui:VisualElement class="p-1" style="flex-shrink: 0; align-items: flex-end;">
+                <ui:Button text="#exit" display-tooltip-when-elided="true" class="button" style="display: none;" />
+                <ui:Button display-tooltip-when-elided="true" name="ExitBtn" class="button_circle">
+                    <ui:VisualElement style="background-image: url(&apos;project://database/Assets/Sprites/128/Close128.png?fileID=2800000&amp;guid=403f4819152989949a0b60620e8ee754&amp;type=3#Close128&apos;); flex-grow: 1;" />
+                </ui:Button>
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0);">
+                <ui:ScrollView scroll-deceleration-rate="0,135" elasticity="0,1" name="ListLevels">
+                    <ui:Instance template="LevelSection" name="LevelSection" />
+                    <ui:Instance template="LevelSection" name="LevelSection" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

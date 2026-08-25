@@ -1,0 +1,26 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:Template name="Leader" src="project://database/Assets/UI%20Toolkit/File/Leader.uxml?fileID=9197481963319205126&amp;guid=9757e6dc2949782429ee42fb4930b862&amp;type=3#Leader" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/UnityBase.uss?fileID=7433441132597879392&amp;guid=1dc2aea145fe99748928c99483204a80&amp;type=3#UnityBase" />
+    <ui:VisualElement style="background-color: rgba(0, 0, 0, 0);">
+        <ui:VisualElement name="UserRankBlok" style="background-color: rgba(0, 0, 0, 0); align-self: center; width: 300px; flex-direction: row; align-items: flex-start; padding-top: 20px; padding-bottom: 20px;">
+            <ui:Label tabindex="-1" text="11" display-tooltip-when-elided="true" name="UserRank" class="m-0 p-0 text-primary" style="-unity-text-align: upper-center; font-size: 30px; -unity-font-style: bold;" />
+            <ui:VisualElement name="UserInfoBlok" style="background-color: rgba(0, 0, 0, 0); align-self: center;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="LeaderBoard" class="b-rounded" style="background-color: rgba(0, 0, 0, 0.05); flex-grow: 1;">
+            <ui:Label tabindex="-1" text="#leaderboard" display-tooltip-when-elided="true" name="NameBoard" class="m-0 text-primary text-md" style="-unity-font-style: bold; padding-top: 10px; padding-bottom: 10px;" />
+            <ui:VisualElement class="text-md" style="border-top-left-radius: 10px; border-bottom-left-radius: 10px; border-top-right-radius: 10px; border-bottom-right-radius: 10px; align-items: stretch; display: flex;">
+                <ui:ScrollView scroll-deceleration-rate="0,135" elasticity="0,1" name="LeaderList" style="flex-grow: 1;">
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                    <ui:Instance template="Leader" name="Leader" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

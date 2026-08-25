@@ -1,0 +1,10 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Styles/base1.uss?fileID=7433441132597879392&amp;guid=0d2d1561a57b70a4798a0a6b1324eaab&amp;type=3#base1"/>
+    <ui:VisualElement name="MachineInfoWrapper" style="flex-grow: 1; -unity-slice-left: 50; -unity-slice-top: 50; -unity-slice-right: 50; -unity-slice-bottom: 50; -unity-slice-scale: 0.8px; flex-shrink: 1;">
+        <ui:VisualElement name="InfoBox" style="padding-top: 25px; padding-right: 25px; padding-bottom: 25px; padding-left: 25px; -unity-slice-left: 1; -unity-slice-top: 1; -unity-slice-right: 1; -unity-slice-bottom: 1; flex-grow: 1; align-items: center; justify-content: center;">
+            <ui:VisualElement style="width: 100px; height: 100px; display: none;"/>
+        </ui:VisualElement>
+        <ui:ScrollView name="UpdatesBox" style="display: none;"/>
+        <ui:Button name="ButtonClose" style="background-image: url(&quot;project://database/Assets/Sprites/Placeholder.png?fileID=2800000&amp;guid=52e2e5bc9595d0149b1bea9ad4aa1487&amp;type=3#Placeholder&quot;); width: 40px; height: 40px; top: 5px; position: absolute; right: 5px;"/>
+    </ui:VisualElement>
+</ui:UXML>

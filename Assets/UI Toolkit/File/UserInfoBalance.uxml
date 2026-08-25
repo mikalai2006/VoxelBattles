@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:VisualElement style="flex-grow: 1; flex-direction: row; align-items: center;">
+        <ui:VisualElement name="Img" style="background-color: rgba(0, 0, 0, 0); background-image: url(&apos;project://database/Assets/Sprites/128/CoinN128.png?fileID=2800000&amp;guid=0d7fbaa06b460124595e8bbb89f88339&amp;type=3#CoinN128&apos;); width: 35px; height: 35px;" />
+        <ui:Label tabindex="-1" text="Label" display-tooltip-when-elided="true" name="Coin" class="text-primary font-bold p-0 m-0" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,81 @@
+:root {
+--color-black: #000000;
+--color-black-50: rgba(0, 0, 0, 0.5);
+
+--color-secondary-50: #f2f2f3;
+--color-secondary-100: #e5e5e6;
+--color-secondary-200: #cacace;
+--color-secondary-300: #b0b0b5;
+--color-secondary-400: #96969c;
+--color-secondary-500: #7c7c83;
+--color-secondary-600: #636369;
+--color-secondary-700: #4a4a4f;
+--color-secondary-800: #313135;
+--color-secondary-900: #19191a;
+--color-secondary-900-50: rgba(25, 25, 26, 0.5);
+--color-secondary-950: #111112;
+
+--color-primary-50: #e5f4ff;
+--color-primary-100: #cce9ff;
+--color-primary-200: #99d3ff;
+--color-primary-300: #66bdff;
+--color-primary-400: #33a7ff;
+--color-primary-500: #0091ff;
+--color-primary-600: #0074cc;
+--color-primary-700: #005799;
+--color-primary-800: #003a66;
+--color-primary-900: #001d33;
+--color-primary-950: #001424;
+
+--color-primary-bg-50: #ecf3f9;
+--color-primary-bg-100: #d9e7f2;
+--color-primary-bg-200: #b3cfe6;
+--color-primary-bg-300: #8cb8d9;
+--color-primary-bg-400: #66a0cc;
+--color-primary-bg-500: #4088bf;
+--color-primary-bg-500-50: rgba(64, 136, 191, 0.5);
+--color-primary-bg-600: #336d99;
+--color-primary-bg-700: #265273;
+--color-primary-bg-800: #19364d;
+--color-primary-bg-900: #0d1b26;
+--color-primary-bg-950: #09131b;
+
+--color-accent-50: #fff5e5;
+--color-accent-100: #ffebcc;
+--color-accent-200: #ffd699;
+--color-accent-300: #ffc266;
+--color-accent-400: #ffad33;
+--color-accent-500: #ff9900;
+--color-accent-600: #cc7a00;
+--color-accent-700: #995c00;
+--color-accent-800: #663d00;
+--color-accent-900: #331f00;
+--color-accent-950: #241500;
+
+--color-accent-bg-50: #faf4eb;
+--color-accent-bg-100: #f5e9d6;
+--color-accent-bg-200: #ebd2ad;
+--color-accent-bg-300: #e0bc85;
+--color-accent-bg-400: #d6a55c;
+--color-accent-bg-500: #cc8f33;
+--color-accent-bg-500-50: rgba(204, 143, 51, 0.5);
+--color-accent-bg-600: #a37229;
+--color-accent-bg-700: #7a561f;
+--color-accent-bg-800: #523914;
+--color-accent-bg-900: #291d0a;
+--color-accent-bg-950: #1d1407;
+
+--color-green-50: #f5ffe5;
+--color-green-100: #ebffcc;
+--color-green-200: #d6ff99;
+--color-green-300: #c2ff66;
+--color-green-400: #adff33;
+--color-green-500: #99ff00;
+--color-green-600: #7acc00;
+--color-green-700: #5c9900;
+--color-green-800: #3d6600;
+--color-green-900: #1f3300;
+--color-green-950: #152400;
+
+--color-white: #ffffff;
+}

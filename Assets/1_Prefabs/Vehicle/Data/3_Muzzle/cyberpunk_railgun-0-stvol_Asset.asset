@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2acf92914233b24fb2ee9f7ba740952, type: 3}
+  m_Name: cyberpunk_railgun-0-stvol_Asset
+  m_EditorClassIdentifier: Assembly-CSharp::BarrelWeaponAsset
+  text:
+    title:
+      m_TableReference:
+        m_TableCollectionName: 
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    description:
+      m_TableReference:
+        m_TableCollectionName: 
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+  partName: 
+  bonusHealth: 50
+  weight: 10
+  meshConfig:
+    sOVoxelData: {fileID: 11400000, guid: bf74d81266acf8845aae8ba3e40e121e, type: 2}
+    _material: {fileID: 2100000, guid: d2a01db3374d70d4b9fca751b55f992c, type: 2}
+    _materialAlpha: {fileID: 2100000, guid: 4aea2ac49fd238943973079bc65deb52, type: 2}
+    isOneMesh: 1
+    isGreedy: 1
+    shadowCastingMode: 0
+    isTile: 0
+    existCollider: 1
+    typeCollider: 0
+    physMaterial: {fileID: 13400000, guid: c33afef9a871dc048bb9807b73464617, type: 2}
+    isConvex: 0
+    isTrigger: 0
+    isRigidbody: 0
+    isKinematic: 0
+    mass: 0
+    isGravity: 0
+    FreezePositionX: 0
+    FreezePositionY: 0
+    FreezePositionZ: 0
+    FreezeRotationX: 0
+    FreezeRotationY: 0
+    FreezeRotationZ: 0
+    rigidbodyInterpolation: 0
+    collisionDetection: 0
+    isDestructible: 1
+    useGlobalScale: 0
+    customScale: 1
+  colorsModifies: []
+  attackStrategy: {fileID: 11400000, guid: 62b9f23854bfb8243995173124cd0514, type: 2}
+  soundShot: {fileID: 8300000, guid: 88b5a9e802ec31d4fba9cdb0adb89562, type: 3}
+  references:
+    version: 2
+    RefIds: []

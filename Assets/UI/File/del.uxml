@@ -1,0 +1,4 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:Button text="Button"/>
+    <ui:VisualElement style="flex-grow: 1; background-image: url(&quot;project://database/Assets/UI/RenderingTextures/ShopView.renderTexture?fileID=8400000&amp;guid=37088a31f09643b48ae750284eed0385&amp;type=2#ShopView&quot;);"/>
+</ui:UXML>

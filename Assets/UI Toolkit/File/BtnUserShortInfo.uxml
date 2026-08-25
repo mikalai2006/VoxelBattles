@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:Button display-tooltip-when-elided="true" name="BtnUser" class="p-0 button m-0 button_user" style="background-color: rgba(0, 0, 0, 0);">
+        <ui:VisualElement class="button_user" style="flex-grow: 1;">
+            <ui:VisualElement name="Ava" class="ava" style="background-image: url(&apos;project://database/Assets/Sprites/128/Cog128.png?fileID=2800000&amp;guid=fe7f28583815e944993cdb808f259b29&amp;type=3#Cog128&apos;);" />
+            <ui:VisualElement style="padding-left: 2px; padding-right: 2px;">
+                <ui:VisualElement>
+                    <ui:Label tabindex="-1" text="Mikalai2006" display-tooltip-when-elided="true" name="UserName" class="text-xs p-0 text-secondary m-0" style="padding-left: 5px; -unity-text-align: middle-left;" />
+                </ui:VisualElement>
+                <ui:VisualElement class="font-bold" style="flex-direction: row; align-items: center;">
+                    <ui:VisualElement style="flex-direction: row; align-items: center;">
+                        <ui:VisualElement name="UserRateImg" class="w4 h-4" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); background-image: url(&apos;project://database/Assets/Sprites/128/Rating128.png?fileID=2800000&amp;guid=54e35f220d7347e4f99f199862e81c5e&amp;type=3#Rating128&apos;);" />
+                        <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="UserRate" class="p-0 m-0 text-secondary" style="-unity-text-align: middle-left;" />
+                    </ui:VisualElement>
+                    <ui:VisualElement style="flex-direction: row; align-items: center; margin-left: 5px;">
+                        <ui:VisualElement name="UserCoinImg" class="w4 h-4" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); background-image: url(&apos;project://database/Assets/Sprites/128/Rating128.png?fileID=2800000&amp;guid=54e35f220d7347e4f99f199862e81c5e&amp;type=3#Rating128&apos;);" />
+                        <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="UserCoin" class="p-0 m-0 text-secondary" style="-unity-text-align: middle-left;" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:Button>
+</ui:UXML>

@@ -1,0 +1,388 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: default Shared Data
+  m_EditorClassIdentifier: 
+  m_TableCollectionName: default
+  m_TableCollectionNameGuidString: 5bdcb541de5b4a3488fe7cac097efa66
+  m_Entries:
+  - m_Id: 18679007629312
+    m_Key: loading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 23346454286336
+    m_Key: name
+    m_Metadata:
+      m_Items: []
+  - m_Id: 23379706728448
+    m_Key: ok
+    m_Metadata:
+      m_Items: []
+  - m_Id: 24429125783552
+    m_Key: loadingData
+    m_Metadata:
+      m_Items: []
+  - m_Id: 27338626387968
+    m_Key: settings
+    m_Metadata:
+      m_Items: []
+  - m_Id: 27401134100480
+    m_Key: volumeEffect
+    m_Metadata:
+      m_Items: []
+  - m_Id: 27494146985984
+    m_Key: language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 27544180838400
+    m_Key: saveOptions
+    m_Metadata:
+      m_Items: []
+  - m_Id: 29696433410048
+    m_Key: btn_battle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 30008116334592
+    m_Key: volumeMusic
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3761770119352320
+    m_Key: t_bonus_speed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3761815346532352
+    m_Key: d_bonus_speed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3761880106586112
+    m_Key: t_bonus_medicine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3761931042213888
+    m_Key: d_bonus_medicine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3761985563971584
+    m_Key: t_bonus_speedTower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3762043248234496
+    m_Key: d_bonus_speedTower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3766987804168192
+    m_Key: t_bonus_distanceAttack
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3767055277936640
+    m_Key: d_bonus_distanceAttack
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4007742857367552
+    m_Key: addbonus
+    m_Metadata:
+      m_Items: []
+  - m_Id: 4021289389740032
+    m_Key: fullBonusValue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9141018652819456
+    m_Key: garage
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9175921511612416
+    m_Key: shop
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487507417718784
+    m_Key: moto1_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487559804575744
+    m_Key: moto1_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487671826046976
+    m_Key: tank1_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487753208127488
+    m_Key: tank1_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487801564258304
+    m_Key: tank2_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487855435898880
+    m_Key: tank2_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487879708336128
+    m_Key: tank3_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487917658398720
+    m_Key: tank3_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487938973851648
+    m_Key: tank4_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487974394748928
+    m_Key: tank4_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9487995383046144
+    m_Key: tank5_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488035883245568
+    m_Key: tank5_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488061577551872
+    m_Key: tank6_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488093630423040
+    m_Key: tank6_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488127189049344
+    m_Key: tank7_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488173833904128
+    m_Key: tank7_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488207497388032
+    m_Key: tank8_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488244747001856
+    m_Key: tank8_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488271900925952
+    m_Key: tank9_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488311667122176
+    m_Key: tank9_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488340733648896
+    m_Key: tank10_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488396408840192
+    m_Key: tank10_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488423374020608
+    m_Key: car1_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488479896461312
+    m_Key: car1_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488511446016000
+    m_Key: car2_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9488541670170624
+    m_Key: car2_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 9864789069615104
+    m_Key: tab_colors
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58830133596606464
+    m_Key: createmap
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58830463700914176
+    m_Key: loadingGameScene
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58836766083076096
+    m_Key: createVariantsTiles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58836812094590976
+    m_Key: createTiles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58836915375132672
+    m_Key: createFixedTiles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58849827082817536
+    m_Key: createGameObjects
+    m_Metadata:
+      m_Items: []
+  - m_Id: 58851271538200576
+    m_Key: createPlayers
+    m_Metadata:
+      m_Items: []
+  - m_Id: 61384237787205632
+    m_Key: generateMap
+    m_Metadata:
+      m_Items: []
+  - m_Id: 68605415898906624
+    m_Key: home
+    m_Metadata:
+      m_Items: []
+  - m_Id: 76205660124119040
+    m_Key: car3_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 76205710304772096
+    m_Key: car3_d
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82607345646784512
+    m_Key: btn_open_colors
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82607431843926016
+    m_Key: btn_sell
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82607951564328960
+    m_Key: btn_cancel_colors
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82609381842964480
+    m_Key: colors_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82609416118816768
+    m_Key: colors_description
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82613148344733696
+    m_Key: colors_choose_detal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82653120145739776
+    m_Key: rank_0_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82653287003541504
+    m_Key: rank_1_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82653365856456704
+    m_Key: rank_2_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654693844406272
+    m_Key: btn_buy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654749007892480
+    m_Key: rank_3_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654841785896960
+    m_Key: rank_4_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654866347741184
+    m_Key: rank_5_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654880172167168
+    m_Key: rank_6_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654893321310208
+    m_Key: rank_7_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654911277125632
+    m_Key: rank_8_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654925734891520
+    m_Key: rank_9_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82654937814487040
+    m_Key: rank_10_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82655446839414784
+    m_Key: rank_11_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82655468343611392
+    m_Key: rank_12_t
+    m_Metadata:
+      m_Items: []
+  - m_Id: 82965484560797696
+    m_Key: not_machine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 83752768860147712
+    m_Key: btn_tower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 83999561871085568
+    m_Key: btn_close
+    m_Metadata:
+      m_Items: []
+  - m_Id: 102631420357713920
+    m_Key: btn_repair
+    m_Metadata:
+      m_Items: []
+  - m_Id: 102631455547924480
+    m_Key: btn_repair_adv
+    m_Metadata:
+      m_Items: []
+  - m_Id: 103732684789325824
+    m_Key: message
+    m_Metadata:
+      m_Items: []
+  - m_Id: 103732828863668224
+    m_Key: message_price_button_success
+    m_Metadata:
+      m_Items: []
+  - m_Id: 105907685143552000
+    m_Key: btn_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 105907737853370368
+    m_Key: btn_wheel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 111361599075115008
+    m_Key: btn_to_start_menu
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 124440043270963679
+  references:
+    version: 2
+    RefIds:
+    - rid: 124440043270963679
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1748342798167

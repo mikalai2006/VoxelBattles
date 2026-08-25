@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:Button display-tooltip-when-elided="true" class="button">
+        <ui:VisualElement style="flex-grow: 1; align-items: center;">
+            <ui:VisualElement name="Img" style="flex-grow: 0; width: 50px; height: 50px; background-image: url(&apos;project://database/Assets/Sprites/128/Cog128.png?fileID=2800000&amp;guid=fe7f28583815e944993cdb808f259b29&amp;type=3#Cog128&apos;);" />
+            <ui:VisualElement style="flex-grow: 1;">
+                <ui:Label tabindex="-1" text="Mikalai2006" display-tooltip-when-elided="true" name="Name" class="m-0 text-md p-0 text-secondary" style="-unity-text-align: upper-left; display: none;" />
+                <ui:Label tabindex="-1" text="123456" display-tooltip-when-elided="true" name="Count" class="m-0 p-0 text-secondary text-lg" style="-unity-font-style: bold; -unity-text-align: upper-center;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:Button>
+</ui:UXML>

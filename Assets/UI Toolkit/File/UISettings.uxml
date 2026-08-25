@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Settings.uss?fileID=7433441132597879392&amp;guid=88dfc651dba86d4488abaaa61bc6b672&amp;type=3#Settings" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Styles.uss?fileID=7433441132597879392&amp;guid=6c67a18a1e6128f4ebf8870201fc2333&amp;type=3#Styles" />
+    <ui:VisualElement name="Menu" class="text-xl" style="background-color: rgb(8, 18, 77); padding-left: 20px; padding-right: 20px; padding-top: 20px; padding-bottom: 20px; border-top-left-radius: 40px; border-bottom-left-radius: 40px; border-top-right-radius: 40px; border-bottom-right-radius: 40px; flex-grow: 1;">
+        <ui:VisualElement class="row" style="background-color: rgba(0, 0, 0, 0); flex-direction: column;">
+            <ui:Label tabindex="-1" text="#volumeEffect" display-tooltip-when-elided="true" class="text-primary" style="font-size: 15px;" />
+            <ui:Slider picking-mode="Ignore" value="0.2" high-value="1" name="VolumeEffect" class="text-primary" style="flex-grow: 1; flex-shrink: 1;" />
+        </ui:VisualElement>
+        <ui:VisualElement class="row" style="background-color: rgba(0, 0, 0, 0); flex-direction: column;">
+            <ui:Label tabindex="-1" text="#volumeMusic" display-tooltip-when-elided="true" class="text-primary" />
+            <ui:Slider picking-mode="Ignore" value="0.2" high-value="1" name="VolumeMusic" class="text-primary" style="flex-grow: 1;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="LanguageBlock" class="row" style="background-color: rgba(0, 0, 0, 0); flex-direction: column;">
+            <ui:Label tabindex="-1" text="#language" display-tooltip-when-elided="true" class="text-primary" style="font-size: 15px;" />
+            <ui:DropdownField index="-1" choices="System.Collections.Generic.List`1[System.String]" name="Language" class="text-primary" style="flex-grow: 1;" />
+        </ui:VisualElement>
+        <ui:VisualElement class="row" style="background-color: rgba(0, 0, 0, 0); flex-direction: column; display: none;">
+            <ui:Label tabindex="-1" text="#issymbol" display-tooltip-when-elided="true" class="text-primary" style="flex-grow: 1; flex-shrink: 1; white-space: normal; font-size: 15px;" />
+            <ui:Toggle name="IsSymbols" />
+        </ui:VisualElement>
+        <ui:Button text="#saveOptions" display-tooltip-when-elided="true" name="BtnSaveOptions" class="btn_menu" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <ui:VisualElement name="FooterBlok" class="font" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); position: absolute; left: 0; right: 0; align-items: center; bottom: 30px;">
+        <ui:VisualElement style="flex-grow: 0; background-color: rgba(0, 0, 0, 0); flex-direction: row; align-items: center; justify-content: space-between; max-width: 340px; width: 340px;">
+            <ui:Button display-tooltip-when-elided="true" name="ShuffleBtn" class="button_circle">
+                <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); background-image: url(&apos;project://database/Assets/Sprites/BgChar2.png?fileID=2800000&amp;guid=81bc87243f22f9747bf7cbd46d867efe&amp;type=3#BgChar2&apos;); -unity-background-scale-mode: scale-and-crop;" />
+            </ui:Button>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

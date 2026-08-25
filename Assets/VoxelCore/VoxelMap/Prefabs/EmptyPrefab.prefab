@@ -1,0 +1,166 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1102058364268440489
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5729799510516631318}
+  - component: {fileID: 6877718757455462945}
+  m_Layer: 0
+  m_Name: Wrapper
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5729799510516631318
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1102058364268440489}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 338956292184690352}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6877718757455462945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1102058364268440489}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19734c1b9437dd54dbfcd66a18a38887, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Mikalai2006.Voxel.VoxelMeshRender
+  Config:
+    sOVoxelData: {fileID: 11400000, guid: de57a0aca770a364fbc11776331682e1, type: 2}
+    _material: {fileID: 2100000, guid: 4ed815933d842f14ba97a24395a971d8, type: 2}
+    isOneMesh: 1
+    isGreedy: 1
+    shadowCastingMode: 0
+    isTile: 1
+    existCollider: 1
+    typeCollider: 0
+    isConvex: 0
+    isRigidbody: 0
+    isKinematic: 0
+    mass: 0
+    freezeRotation: 0
+    constraints: 0
+    isDestructible: 1
+    useGlobalScale: 1
+    customScale: 0
+    meshConfigModify:
+      colors: []
+  ConfigModify:
+    colors: []
+  Wrapper: {fileID: 1102058364268440489}
+--- !u!1 &5230300892508819555
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 338956292184690352}
+  - component: {fileID: 5253875406899901486}
+  m_Layer: 0
+  m_Name: EmptyPrefab
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &338956292184690352
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5230300892508819555}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5729799510516631318}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5253875406899901486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5230300892508819555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fad62b130a92d642a6d35cc1ee71905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Tile3D
+  UID: empty
+  TileSideVoxels: 32
+  Weight: 50
+  Rotation: 0
+  voxelMeshRender: {fileID: 6877718757455462945}
+  isEmpty: 1
+  ColorsRight: []
+  ColorsForward: []
+  ColorsLeft: []
+  ColorsBack: []
+  ColorsTop: []
+  ColorsBottom: []
+  tileSockets:
+    name: 
+    rotation: 0
+    posX: -1
+    negX: -1
+    posY: -1
+    negY: -1
+    posZ: -1
+    negZ: -1
+    weight: 0
+  TileNeghboursList:
+    pX: []
+    nX: []
+    pY: []
+    nY: []
+    pZ: []
+    nZ: []
+  meshConfig:
+    sOVoxelData: {fileID: 0}
+    _material: {fileID: 0}
+    isOneMesh: 0
+    isGreedy: 0
+    shadowCastingMode: 0
+    isTile: 0
+    existCollider: 0
+    typeCollider: 0
+    isConvex: 0
+    isRigidbody: 0
+    isKinematic: 0
+    mass: 0
+    freezeRotation: 0
+    constraints: 0
+    isDestructible: 0
+    useGlobalScale: 0
+    customScale: 0
+    meshConfigModify:
+      colors: []
+  tileOptions: []
+  isCollapsed: 0
+  isTop: 0

@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/File/Base.uss?fileID=7433441132597879392&amp;guid=47ab2fccdf66be0488c7b62162e81d51&amp;type=3#Base" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Styles.uss?fileID=7433441132597879392&amp;guid=6c67a18a1e6128f4ebf8870201fc2333&amp;type=3#Styles" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/UnityBase.uss?fileID=7433441132597879392&amp;guid=1dc2aea145fe99748928c99483204a80&amp;type=3#UnityBase" />
+    <Style src="project://database/Assets/UI%20Toolkit/File/Settings.uss?fileID=7433441132597879392&amp;guid=88dfc651dba86d4488abaaa61bc6b672&amp;type=3#Settings" />
+    <Style src="project://database/Assets/Loader/UI/Loader.uss?fileID=7433441132597879392&amp;guid=f3bdaf12f4a36a54f8000475d879db68&amp;type=3#Loader" />
+    <ui:VisualElement name="Loader" class="loader font" style="align-self: stretch; align-items: stretch; flex-grow: 1;">
+        <ui:VisualElement name="OverBG" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0.2); align-self: stretch;" />
+        <ui:VisualElement name="ProgressBarSection" class="progress-bar__section" style="font-size: 20px;">
+            <ui:Label tabindex="-1" display-tooltip-when-elided="true" name="ProgressBarText" text="..." class="text-md" style="color: rgb(0, 0, 0); font-size: 25px;" />
+            <ui:VisualElement name="ProgressBarBox" class="progress-bar__box">
+                <ui:VisualElement name="ProgressBar" class="progress-bar" style="background-color: rgb(245, 242, 242);" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

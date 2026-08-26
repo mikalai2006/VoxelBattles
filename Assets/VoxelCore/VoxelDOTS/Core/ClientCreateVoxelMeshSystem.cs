@@ -311,7 +311,6 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
         }
 
         // ====================================================================
-        // ЖЕЛЕЗОБЕТОННЫЙ АККОРД БЕЗОПАСНОСТИ:
         // Объединяем хэндлы асинхронного выпекания ВСЕХ индивидуальных чанков.
         // ====================================================================
         JobHandle allChunksBakedHandle = JobHandle.CombineDependencies(m_JobHandles.AsArray());

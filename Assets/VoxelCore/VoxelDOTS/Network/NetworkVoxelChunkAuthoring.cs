@@ -65,6 +65,9 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             //indexBuffer.Resize(24576, NativeArrayOptions.ClearMemory);
             //// ====================================================================
 
+            AddComponent<ChunkColliderNeedCreate>(entity);
+            SetComponentEnabled<ChunkColliderNeedCreate>(entity, true);
+
             AddComponent<ChunkColliderData>(entity);
             SetComponentEnabled<ChunkColliderData>(entity, false);
 

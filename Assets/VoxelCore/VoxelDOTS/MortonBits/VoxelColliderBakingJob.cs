@@ -5,164 +5,232 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
 
-
 [BurstCompile(CompileSynchronously = true)]
 public struct GenerateChunkColliderJob : IJob
 {
-    // Передаем буфер как NativeArray.AsReadOnly() из системы
     [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;
+    [ReadOnly] public NativeArray<byte> FlattenedModelColors;
+    public int ChunkOffsetInFlattenedArray;
 
-    // Выходной контейнер для готового BlobAsset коллайдера (на 1 элемент)
+    public NativeArray<int3> JobCountersRef;
     public NativeArray<BlobAssetReference<Collider>> OutputColliderBlob;
 
-    // Константа размера для оптимизации компилятора (Burst заменит операции деления/умножения на сдвиги битов)
     private const int CHUNK_SIZE = 32;
 
     public void Execute()
     {
-        // Локальные списки во временной памяти (стековый аллокатор Unity, очень быстрый)
         var vertices = new NativeList<float3>(Allocator.Temp);
         var triangles = new NativeList<int3>(Allocator.Temp);
 
-        // Порядок циклов Z -> Y -> X оптимизирован под формулу индекса X + 32 * (Y + 32 * Z)
-        // Это обеспечивает последовательное чтение битов из ulong и минимизирует промахи кэша процессора
-        for (int z = 0; z < CHUNK_SIZE; z++)
-        {
-            for (int y = 0; y < CHUNK_SIZE; y++)
-            {
-                for (int x = 0; x < CHUNK_SIZE; x++)
-                {
-                    int flatIndex = x + CHUNK_SIZE * (y + CHUNK_SIZE * z);
+        var directions = new NativeArray<int3>(6, Allocator.Temp);
+        directions[0] = new int3(1, 0, 0);  // +X
+        directions[1] = new int3(-1, 0, 0); // -X
+        directions[2] = new int3(0, 1, 0);  // +Y
+        directions[3] = new int3(0, -1, 0); // -Y
+        directions[4] = new int3(0, 0, 1);  // +Z
+        directions[5] = new int3(0, 0, -1); // -Z
 
-                    // Если блок НЕ разрушен (Solid)
-                    if (IsBlockSolid(flatIndex))
-                    {
-                        // Проверяем 6 соседних направлений
-                        CheckAndAddFace(x, y, z, new int3(1, 0, 0), vertices, triangles);  // +X (Право)
-                        CheckAndAddFace(x, y, z, new int3(-1, 0, 0), vertices, triangles); // -X (Лево)
-                        CheckAndAddFace(x, y, z, new int3(0, 1, 0), vertices, triangles);  // +Y (Верх)
-                        CheckAndAddFace(x, y, z, new int3(0, -1, 0), vertices, triangles); // -Y (Низ)
-                        CheckAndAddFace(x, y, z, new int3(0, 0, 1), vertices, triangles);  // +Z (Вперед)
-                        CheckAndAddFace(x, y, z, new int3(0, 0, -1), vertices, triangles); // -Z (Назад)
-                    }
-                }
+        // Маска посещенных вокселей для текущего слоя (32x32 = 1024 бит -> 16 элементов ulong)
+        var visited = new NativeArray<ulong>(16, Allocator.Temp);
+
+        // Перебираем все 6 направлений граней куба
+        for (int d = 0; d < 6; d++)
+        {
+            int3 dir = directions[d];
+
+            // Итерируемся по слоям чанка. h — это глубина (высота) текущего среза
+            for (int h = 0; h < CHUNK_SIZE; h++)
+            {
+                // Сбрасываем маску посещенных вокселей для нового слоя
+                for (int i = 0; i < 16; i++) visited[i] = 0;
+
+                // Запускаем двумерный Greedy-мешинг на текущем слое (см. Часть 2)
+                ProcessLayerGreedyMesh(h, dir, visited, vertices, triangles);
             }
         }
 
-        // Если чанк полностью уничтожен (нет геометрии), возвращаем пустую ссылку
+        // Если вершин нет, значит весь чанк пустой
         if (vertices.Length == 0)
         {
             OutputColliderBlob[0] = default;
             return;
         }
 
-        // Строим MeshCollider на потоке-воркере. На размере 32x32x32 дерево BVH соберется мгновенно.
-        BlobAssetReference<Collider> meshColliderBlob = Unity.Physics.MeshCollider.Create(
+        // Запекаем сжатый физический коллайдер на сервере
+        OutputColliderBlob[0] = Unity.Physics.MeshCollider.Create(
             vertices.AsArray(),
             triangles.AsArray(),
             CollisionFilter.Default
         );
 
-        // Сохраняем результат
-        OutputColliderBlob[0] = meshColliderBlob;
+        JobCountersRef[0] = new int3(vertices.Length, triangles.Length, 1);
 
-        // Освобождаем временную память списков
         vertices.Dispose();
         triangles.Dispose();
+        directions.Dispose();
+        visited.Dispose();
     }
 
-    // Проверка битового флага в массиве ulong элементов буфера
-    private bool IsBlockSolid(int flatIndex)
+    private void ProcessLayerGreedyMesh(int h, int3 dir, NativeArray<ulong> visited, NativeList<float3> vertices, NativeList<int3> triangles)
     {
-        // flatIndex / 64 через битовый сдвиг (Burst сделает это автоматически благодаря константам)
+        // Плоскость сканирования внутри слоя: оси v и u
+        for (int v = 0; v < CHUNK_SIZE; v++)
+        {
+            for (int u = 0; u < CHUNK_SIZE; u++)
+            {
+                // Проверяем по битовой маске, обрабатывали ли мы этот воксель ранее
+                int bitIndex = u + (v << 5);
+                if ((visited[bitIndex >> 6] & (1UL << (bitIndex & 63))) != 0) continue;
+
+                // Переводим локальные u, v, h в мировые x, y, z в зависимости от грани
+                GetXYZ(u, v, h, dir, out int x, out int y, out int z);
+
+                // Если грань не видна (блок уничтожен или скрыт соседом) — пропускаем
+                if (!IsFaceVisible(x, y, z, dir)) continue;
+
+                // --- НАЧАЛО ЖАДНОГО СХЛОПЫВАНИЯ ---
+
+                // 1. Растягиваем прямоугольник в ширину по оси U
+                int width = 1;
+                while (u + width < CHUNK_SIZE)
+                {
+                    int nextBit = (u + width) + (v << 5);
+                    if ((visited[nextBit >> 6] & (1UL << (nextBit & 63))) != 0) break;
+
+                    GetXYZ(u + width, v, h, dir, out int nx, out int ny, out int nz);
+                    if (!IsFaceVisible(nx, ny, nz, dir)) break;
+
+                    width++;
+                }
+
+                // 2. Растягиваем полученную линию в высоту по оси V
+                int height = 1;
+                bool canStretchV = true;
+                while (v + height < CHUNK_SIZE && canStretchV)
+                {
+                    for (int currU = 0; currU < width; currU++)
+                    {
+                        int checkBit = (u + currU) + ((v + height) << 5);
+                        if ((visited[checkBit >> 6] & (1UL << (checkBit & 63))) != 0)
+                        {
+                            canStretchV = false;
+                            break;
+                        }
+
+                        GetXYZ(u + currU, v + height, h, dir, out int nx, out int ny, out int nz);
+                        if (!IsFaceVisible(nx, ny, nz, dir))
+                        {
+                            canStretchV = false;
+                            break;
+                        }
+                    }
+
+                    if (canStretchV) height++;
+                }
+
+                // 3. Помечаем все объединенные воксели как посещенные
+                for (int currV = 0; currV < height; currV++)
+                {
+                    for (int currU = 0; currU < width; currU++)
+                    {
+                        int markBit = (u + currU) + ((v + currV) << 5);
+                        visited[markBit >> 6] |= (1UL << (markBit & 63));
+                    }
+                }
+
+                // 4. Добавляем итоговую большую геометрическую панель коллизии
+                BuildAAAStretchedFaceGeometry(u, v, h, width, height, dir, vertices, triangles);
+            }
+        }
+    }
+    private bool IsBlockSolid(int x, int y, int z)
+    {
+        int flatIndex = x + (y << 5) + (z << 10);
         int ulongIndex = flatIndex >> 6;
+        int bitOffset = flatIndex & 63;
 
-        // Защита от выхода за границы (для чанка 32^3 верхний индекс равен 511)
-        if (ulongIndex < 0 || ulongIndex >= 512) return false;
+        bool isVoxelNotDestroyed = (LiveMask[ulongIndex].Value & (1UL << bitOffset)) != 0;
+        if (!isVoxelNotDestroyed) return false;
 
-        // flatIndex % 64
-        int bitIndex = flatIndex & 63;
-        ulong maskValue = LiveMask[ulongIndex].Value;
+        int targetColorIndex = ChunkOffsetInFlattenedArray + flatIndex;
+        if (targetColorIndex < 0 || targetColorIndex >= FlattenedModelColors.Length) return false;
 
-        // Извлекаем бит: 1 — разрушен, 0 — цел
-        bool isDestroyed = ((maskValue >> bitIndex) & 1UL) == 1UL;
-
-        return !isDestroyed;
+        return FlattenedModelColors[targetColorIndex] > 0;
     }
 
-    private void CheckAndAddFace(int x, int y, int z, int3 direction, NativeList<float3> vertices, NativeList<int3> triangles)
+    private bool IsFaceVisible(int x, int y, int z, int3 direction)
     {
+        if (!IsBlockSolid(x, y, z)) return false;
+
         int3 neighbor = new int3(x, y, z) + direction;
 
-        // Если сосед за пределами этого чанка (граница), строим внешнюю стенку коллизии
         if (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE ||
             neighbor.y < 0 || neighbor.y >= CHUNK_SIZE ||
             neighbor.z < 0 || neighbor.z >= CHUNK_SIZE)
         {
-            BuildFaceGeometry(x, y, z, direction, vertices, triangles);
+            return true;
         }
-        else
-        {
-            // Если сосед внутри чанка, проверяем его состояние по индексу
-            int neighborFlatIndex = neighbor.x + CHUNK_SIZE * (neighbor.y + CHUNK_SIZE * neighbor.z);
-            if (!IsBlockSolid(neighborFlatIndex))
-            {
-                BuildFaceGeometry(x, y, z, direction, vertices, triangles);
-            }
-        }
+
+        return !IsBlockSolid(neighbor.x, neighbor.y, neighbor.z);
     }
 
-    private void BuildFaceGeometry(int x, int y, int z, int3 direction, NativeList<float3> vertices, NativeList<int3> triangles)
+    private void GetXYZ(int u, int v, int h, int3 direction, out int x, out int y, out int z)
     {
-        int vCount = vertices.Length;
-        float3 p = new float3(x, y, z);
+        if (direction.x != 0) // Боковые срезы чанка (+X, -X)
+        {
+            x = h; y = v; z = u;
+        }
+        else if (direction.y != 0) // Горизонтальные срезы чанка (+Y, -Y)
+        {
+            x = u; y = h; z = v;
+        }
+        else // Фронтальные срезы чанка (+Z, -Z)
+        {
+            x = u; y = v; z = h;
+        }
+    }
+    private void BuildAAAStretchedFaceGeometry(int u, int v, int h, int width, int height, int3 direction, NativeList<float3> vertices, NativeList<int3> triangles)
+    {
+        int vStart = vertices.Length;
 
-        if (direction.x == 1) // +X
+        float3 p = default;
+        float3 right = default;
+        float3 up = default;
+
+        if (direction.x == 1) // Панель на грани +X
         {
-            vertices.Add(p + new float3(1, 0, 0));
-            vertices.Add(p + new float3(1, 1, 0));
-            vertices.Add(p + new float3(1, 1, 1));
-            vertices.Add(p + new float3(1, 0, 1));
+            p = new float3(h + 1, v, u); right = new float3(0, 0, width); up = new float3(0, height, 0);
+            vertices.Add(p); vertices.Add(p + right); vertices.Add(p + right + up); vertices.Add(p + up);
         }
-        else if (direction.x == -1) // -X
+        else if (direction.x == -1) // Панель на грани -X
         {
-            vertices.Add(p + new float3(0, 0, 1));
-            vertices.Add(p + new float3(0, 1, 1));
-            vertices.Add(p + new float3(0, 1, 0));
-            vertices.Add(p + new float3(0, 0, 0));
+            p = new float3(h, v, u); right = new float3(0, 0, width); up = new float3(0, height, 0);
+            vertices.Add(p); vertices.Add(p + up); vertices.Add(p + right + up); vertices.Add(p + right);
         }
-        else if (direction.y == 1) // +Y
+        else if (direction.y == 1) // Панель на грани +Y
         {
-            vertices.Add(p + new float3(0, 1, 0));
-            vertices.Add(p + new float3(0, 1, 1));
-            vertices.Add(p + new float3(1, 1, 1));
-            vertices.Add(p + new float3(1, 1, 0));
+            p = new float3(u, h + 1, v); right = new float3(width, 0, 0); up = new float3(0, 0, height);
+            vertices.Add(p + up); vertices.Add(p + right + up); vertices.Add(p + right); vertices.Add(p);
         }
-        else if (direction.y == -1) // -Y
+        else if (direction.y == -1) // Панель на грани -Y
         {
-            vertices.Add(p + new float3(0, 0, 1));
-            vertices.Add(p + new float3(0, 0, 0));
-            vertices.Add(p + new float3(1, 0, 0));
-            vertices.Add(p + new float3(1, 0, 1));
+            p = new float3(u, h, v); right = new float3(width, 0, 0); up = new float3(0, 0, height);
+            vertices.Add(p); vertices.Add(p + right); vertices.Add(p + right + up); vertices.Add(p + up);
         }
-        else if (direction.z == 1) // +Z
+        else if (direction.z == 1) // Панель на грани +Z
         {
-            vertices.Add(p + new float3(1, 0, 1));
-            vertices.Add(p + new float3(1, 1, 1));
-            vertices.Add(p + new float3(0, 1, 1));
-            vertices.Add(p + new float3(0, 0, 1));
+            p = new float3(u, v, h + 1); right = new float3(width, 0, 0); up = new float3(0, height, 0);
+            vertices.Add(p); vertices.Add(p + up); vertices.Add(p + right + up); vertices.Add(p + right);
         }
-        else if (direction.z == -1) // -Z
+        else // Панель на грани -Z
         {
-            vertices.Add(p + new float3(0, 0, 0));
-            vertices.Add(p + new float3(0, 1, 0));
-            vertices.Add(p + new float3(1, 1, 0));
-            vertices.Add(p + new float3(1, 0, 0));
+            p = new float3(u, v, h); right = new float3(width, 0, 0); up = new float3(0, height, 0);
+            vertices.Add(p + right); vertices.Add(p + right + up); vertices.Add(p + up); vertices.Add(p);
         }
 
-        // Обход по часовой стрелке для правильного направления нормалей физики наружу блоков
-        triangles.Add(new int3(vCount + 0, vCount + 1, vCount + 2));
-        triangles.Add(new int3(vCount + 0, vCount + 2, vCount + 3));
+        // Собираем два треугольника для получившейся Greedy-панели
+        triangles.Add(new int3(vStart + 0, vStart + 1, vStart + 2));
+        triangles.Add(new int3(vStart + 0, vStart + 2, vStart + 3));
     }
 }
 

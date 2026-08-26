@@ -48,8 +48,8 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             SetComponentEnabled<ChunkActiveState>(entity, false);
             SetComponentEnabled<ChunkPhysicsActiveState>(entity, false);
 
-            // 4. ТЕГ КЛИЕНТСКОГО РЕНДЕРА
-            AddComponent<ClientRenderState>(entity);
+            //// 4. ТЕГ КЛИЕНТСКОГО РЕНДЕРА
+            //AddComponent<ClientRenderState>(entity);
 
             //// Добавляем временные буфера
             //var vertexBuffer = AddBuffer<ChunkVertexElement>(entity);
@@ -67,6 +67,12 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
 
             AddComponent<ChunkGraphicsFlushTag>(entity);
             SetComponentEnabled<ChunkGraphicsFlushTag>(entity, false);
+
+            // данные для меша
+            AddComponent<ChunkMeshData>(entity);
+            SetComponentEnabled<ChunkMeshData>(entity, false);
+
+            AddComponent<ChunkMeshLink>(entity);
         }
     }
 }

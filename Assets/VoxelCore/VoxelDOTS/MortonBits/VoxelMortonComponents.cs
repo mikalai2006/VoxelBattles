@@ -62,17 +62,17 @@ public struct LocalChunkDestructionMask : IBufferElementData
 //    public BatchMaterialID OpaqueMaterialID;
 //}
 
-// Локальный компонент для отслеживания состояния рендеринга на клиенте
-public struct ClientRenderState : IComponentData
-{
-    public uint LastProcessedVersion;
-    public bool NeedsMeshRebuild;
+//// Локальный компонент для отслеживания состояния рендеринга на клиенте
+//public struct ClientRenderState : IComponentData
+//{
+//    public uint LastProcessedVersion;
+//    public bool NeedsMeshRebuild;
 
-    // Кэшируем постоянную unmanaged-ссылку на Mesh-болванку, 
-    // чтобы просто перезаписывать её через WritableMeshData без аллокаций
-    public int CachedRenderMeshIndex;
-    public bool IsMeshInitialized;
-}
+//    // Кэшируем постоянную unmanaged-ссылку на Mesh-болванку, 
+//    // чтобы просто перезаписывать её через WritableMeshData без аллокаций
+//    public int CachedRenderMeshIndex;
+//    public bool IsMeshInitialized;
+//}
 
 // Маркерный компонент (должен быть ICleanupComponentData, чтобы не удаляться вместе с сущностью!)
 //[UnityEngine.HideInInspector]

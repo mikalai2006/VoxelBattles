@@ -16,7 +16,7 @@ using UnityEngine.Rendering;
 //}
 
 
-public struct NewChunkMeshData : IComponentData, IEnableableComponent
+public struct NewChunkMeshData // : IComponentData, IEnableableComponent
 {
     public Entity TargetEntity;
     public int JobIndex;
@@ -90,7 +90,10 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         // ====================================================================
         // ФАЗА 2: СБОРКА ЧАНКОВ, КОТОРЫЕ ПОЛНОСТЬЮ ДОПЕКЛИСЬ НА ЯДРАХ CPU
         // ====================================================================
-        foreach (var (chunkData, chunkEntity) in SystemAPI.Query<RefRO<ChunkMeshData>>().WithEntityAccess())
+        foreach (var (chunkData, chunkEntity) in SystemAPI.Query<RefRO<ChunkMeshData>>()
+            .WithAll<ChunkMeshData>()
+            .WithEntityAccess()
+        )
         {
             // Проверяем флаг готовности (z координата нашего нативного счетчика)
             // Если массив не создан или флаг равен 0 — воркер CPU еще пишет данные. Мгновенный пропуск!

@@ -5,6 +5,168 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
 
+
+[BurstCompile(CompileSynchronously = true)]
+public struct GenerateChunkColliderJob : IJob
+{
+    // Передаем буфер как NativeArray.AsReadOnly() из системы
+    [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;
+
+    // Выходной контейнер для готового BlobAsset коллайдера (на 1 элемент)
+    public NativeArray<BlobAssetReference<Collider>> OutputColliderBlob;
+
+    // Константа размера для оптимизации компилятора (Burst заменит операции деления/умножения на сдвиги битов)
+    private const int CHUNK_SIZE = 32;
+
+    public void Execute()
+    {
+        // Локальные списки во временной памяти (стековый аллокатор Unity, очень быстрый)
+        var vertices = new NativeList<float3>(Allocator.Temp);
+        var triangles = new NativeList<int3>(Allocator.Temp);
+
+        // Порядок циклов Z -> Y -> X оптимизирован под формулу индекса X + 32 * (Y + 32 * Z)
+        // Это обеспечивает последовательное чтение битов из ulong и минимизирует промахи кэша процессора
+        for (int z = 0; z < CHUNK_SIZE; z++)
+        {
+            for (int y = 0; y < CHUNK_SIZE; y++)
+            {
+                for (int x = 0; x < CHUNK_SIZE; x++)
+                {
+                    int flatIndex = x + CHUNK_SIZE * (y + CHUNK_SIZE * z);
+
+                    // Если блок НЕ разрушен (Solid)
+                    if (IsBlockSolid(flatIndex))
+                    {
+                        // Проверяем 6 соседних направлений
+                        CheckAndAddFace(x, y, z, new int3(1, 0, 0), vertices, triangles);  // +X (Право)
+                        CheckAndAddFace(x, y, z, new int3(-1, 0, 0), vertices, triangles); // -X (Лево)
+                        CheckAndAddFace(x, y, z, new int3(0, 1, 0), vertices, triangles);  // +Y (Верх)
+                        CheckAndAddFace(x, y, z, new int3(0, -1, 0), vertices, triangles); // -Y (Низ)
+                        CheckAndAddFace(x, y, z, new int3(0, 0, 1), vertices, triangles);  // +Z (Вперед)
+                        CheckAndAddFace(x, y, z, new int3(0, 0, -1), vertices, triangles); // -Z (Назад)
+                    }
+                }
+            }
+        }
+
+        // Если чанк полностью уничтожен (нет геометрии), возвращаем пустую ссылку
+        if (vertices.Length == 0)
+        {
+            OutputColliderBlob[0] = default;
+            return;
+        }
+
+        // Строим MeshCollider на потоке-воркере. На размере 32x32x32 дерево BVH соберется мгновенно.
+        BlobAssetReference<Collider> meshColliderBlob = Unity.Physics.MeshCollider.Create(
+            vertices.AsArray(),
+            triangles.AsArray(),
+            CollisionFilter.Default
+        );
+
+        // Сохраняем результат
+        OutputColliderBlob[0] = meshColliderBlob;
+
+        // Освобождаем временную память списков
+        vertices.Dispose();
+        triangles.Dispose();
+    }
+
+    // Проверка битового флага в массиве ulong элементов буфера
+    private bool IsBlockSolid(int flatIndex)
+    {
+        // flatIndex / 64 через битовый сдвиг (Burst сделает это автоматически благодаря константам)
+        int ulongIndex = flatIndex >> 6;
+
+        // Защита от выхода за границы (для чанка 32^3 верхний индекс равен 511)
+        if (ulongIndex < 0 || ulongIndex >= 512) return false;
+
+        // flatIndex % 64
+        int bitIndex = flatIndex & 63;
+        ulong maskValue = LiveMask[ulongIndex].Value;
+
+        // Извлекаем бит: 1 — разрушен, 0 — цел
+        bool isDestroyed = ((maskValue >> bitIndex) & 1UL) == 1UL;
+
+        return !isDestroyed;
+    }
+
+    private void CheckAndAddFace(int x, int y, int z, int3 direction, NativeList<float3> vertices, NativeList<int3> triangles)
+    {
+        int3 neighbor = new int3(x, y, z) + direction;
+
+        // Если сосед за пределами этого чанка (граница), строим внешнюю стенку коллизии
+        if (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE ||
+            neighbor.y < 0 || neighbor.y >= CHUNK_SIZE ||
+            neighbor.z < 0 || neighbor.z >= CHUNK_SIZE)
+        {
+            BuildFaceGeometry(x, y, z, direction, vertices, triangles);
+        }
+        else
+        {
+            // Если сосед внутри чанка, проверяем его состояние по индексу
+            int neighborFlatIndex = neighbor.x + CHUNK_SIZE * (neighbor.y + CHUNK_SIZE * neighbor.z);
+            if (!IsBlockSolid(neighborFlatIndex))
+            {
+                BuildFaceGeometry(x, y, z, direction, vertices, triangles);
+            }
+        }
+    }
+
+    private void BuildFaceGeometry(int x, int y, int z, int3 direction, NativeList<float3> vertices, NativeList<int3> triangles)
+    {
+        int vCount = vertices.Length;
+        float3 p = new float3(x, y, z);
+
+        if (direction.x == 1) // +X
+        {
+            vertices.Add(p + new float3(1, 0, 0));
+            vertices.Add(p + new float3(1, 1, 0));
+            vertices.Add(p + new float3(1, 1, 1));
+            vertices.Add(p + new float3(1, 0, 1));
+        }
+        else if (direction.x == -1) // -X
+        {
+            vertices.Add(p + new float3(0, 0, 1));
+            vertices.Add(p + new float3(0, 1, 1));
+            vertices.Add(p + new float3(0, 1, 0));
+            vertices.Add(p + new float3(0, 0, 0));
+        }
+        else if (direction.y == 1) // +Y
+        {
+            vertices.Add(p + new float3(0, 1, 0));
+            vertices.Add(p + new float3(0, 1, 1));
+            vertices.Add(p + new float3(1, 1, 1));
+            vertices.Add(p + new float3(1, 1, 0));
+        }
+        else if (direction.y == -1) // -Y
+        {
+            vertices.Add(p + new float3(0, 0, 1));
+            vertices.Add(p + new float3(0, 0, 0));
+            vertices.Add(p + new float3(1, 0, 0));
+            vertices.Add(p + new float3(1, 0, 1));
+        }
+        else if (direction.z == 1) // +Z
+        {
+            vertices.Add(p + new float3(1, 0, 1));
+            vertices.Add(p + new float3(1, 1, 1));
+            vertices.Add(p + new float3(0, 1, 1));
+            vertices.Add(p + new float3(0, 0, 1));
+        }
+        else if (direction.z == -1) // -Z
+        {
+            vertices.Add(p + new float3(0, 0, 0));
+            vertices.Add(p + new float3(0, 1, 0));
+            vertices.Add(p + new float3(1, 1, 0));
+            vertices.Add(p + new float3(1, 0, 0));
+        }
+
+        // Обход по часовой стрелке для правильного направления нормалей физики наружу блоков
+        triangles.Add(new int3(vCount + 0, vCount + 1, vCount + 2));
+        triangles.Add(new int3(vCount + 0, vCount + 2, vCount + 3));
+    }
+}
+
+
 public struct BakedBoxData
 {
     public BoxGeometry Geometry;

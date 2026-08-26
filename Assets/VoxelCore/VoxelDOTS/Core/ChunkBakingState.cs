@@ -21,36 +21,32 @@
 //}
 
 
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Physics;
 
 
-[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
-public struct ChunkGraphicsFlushTag : IComponentData, IEnableableComponent
-{
-    // ЖЕЛЕЗОБЕТОННЫЙ ПАРАЛЛЕЛЬНЫЙ ПАЙПЛАЙН:
-    // Храним чистые, изолированные C++ массивы геометрии ТОЛЬКО этого чанка!
-    public NativeArray<VoxelVertex> SafeVertices;
-    public NativeArray<int> SafeIndices;
-    public NativeArray<int2> SafeCounter;
-    public NativeArray<BlobAssetReference<Collider>> SafeColliderBlob;
-    //public NativeList<BakedBoxData> BakedBoxes;
-    //public BlobAssetReference<Collider> SafeColliderBlob;
+//[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
+//public struct ChunkGraphicsFlushTag : IComponentData, IEnableableComponent
+//{
+//    // ЖЕЛЕЗОБЕТОННЫЙ ПАРАЛЛЕЛЬНЫЙ ПАЙПЛАЙН:
+//    // Храним чистые, изолированные C++ массивы геометрии ТОЛЬКО этого чанка!
+//    public NativeArray<VoxelVertex> SafeVertices;
+//    public NativeArray<int> SafeIndices;
+//    public NativeArray<int2> SafeCounter;
+//    public NativeArray<BlobAssetReference<Collider>> SafeColliderBlob;
+//    //public NativeList<BakedBoxData> BakedBoxes;
+//    //public BlobAssetReference<Collider> SafeColliderBlob;
 
-    // Ссылка на хэндл джобы для точечной проверки готовности
-    public JobHandle LastBakingJobHandle;
+//    // Ссылка на хэндл джобы для точечной проверки готовности
+//    public JobHandle LastBakingJobHandle;
 
-    public Entity RootVehicleEntity;
-    public float3 LocalOffsetWithPivot;
-    public MinMaxAABB LocalBounds;
-    public MinMaxAABB WorldBounds;
-    public bool HasGraphicsBefore;
-    public int3 index;
+//    public Entity RootVehicleEntity;
+//    public float3 LocalOffsetWithPivot;
+//    public MinMaxAABB LocalBounds;
+//    public MinMaxAABB WorldBounds;
+//    public bool HasGraphicsBefore;
+//    public int3 index;
 
-}
+//}
 
 
 // Буфер для хранения вершин чанка прямо на его Entity

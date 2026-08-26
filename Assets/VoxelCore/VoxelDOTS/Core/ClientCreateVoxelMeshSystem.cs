@@ -9,6 +9,8 @@ using Unity.Rendering;
 using Unity.Transforms;
 
 
+public struct ChunkMeshNeedCreate : IComponentData, IEnableableComponent { }
+
 [ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
 public struct ChunkMeshData : IComponentData, IEnableableComponent
 {
@@ -48,7 +50,6 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
 
     private EntityQuery m_RebuildChunksQuery;
 
-
     [BurstCompile(CompileSynchronously = true)]
     public void OnCreate(ref SystemState state)
     {
@@ -72,7 +73,15 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
         queryTypes[0] = ComponentType.ReadOnly<LocalChunkDestructionMask>();
         queryTypes[1] = ComponentType.ReadOnly<ChunkIndexComponent>();
         queryTypes[2] = ComponentType.ReadOnly<VoxelModelHeader>();
-        queryTypes[3] = ComponentType.Exclude<ChunkActiveState>();
+        //queryTypes[3] = ComponentType.Exclude<ChunkActiveState>();
+        // Фильтр .WithAll<ChunkMeshNeedCreate>()
+        // Так как это IEnableableComponent, он должен присутствовать на сущности и быть Enabled
+        queryTypes[3] = ComponentType.ReadOnly<ChunkMeshNeedCreate>();
+        // Если нужно раскомментировать .WithDisabled<ChunkMeshData>() или .WithDisabled<ChunkActiveState>(),
+        // то размер массива увеличиваем, а компоненты добавляем через ComponentType.Exclude<T>:
+        // queryTypes[5] = ComponentType.Exclude<ChunkMeshData>();
+        // queryTypes[6] = ComponentType.Exclude<ChunkActiveState>();
+
 
         // Передаем NativeArray в метод
         m_RebuildChunksQuery = state.GetEntityQuery(queryTypes);
@@ -104,6 +113,10 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
 
         m_JobHandles.Clear();
 
+
+        var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+        var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+
         //// Считаем точное число чанков на перестроение в текущем кадре
         //int totalChunksToRebuild = 0;
         //foreach (var (maskBuffer, chunkIndex, modelHeader, entity) in SystemAPI.Query<DynamicBuffer<LocalChunkDestructionMask>, RefRO<ChunkIndexComponent>, RefRO<VoxelModelHeader>>().WithDisabled<ChunkActiveState>().WithEntityAccess())
@@ -128,8 +141,9 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
                 RefRO<VoxelModelHeader>,
                 RefRO<GhostInstance>
             >()
-             .WithDisabled<ChunkMeshData>()
-             .WithDisabled<ChunkActiveState>()
+            .WithAll<ChunkMeshNeedCreate>() // Сущность попадет в выборку, только если у неё присутствует компонент T И он включен (Enabled).
+                                            //.WithDisabled<ChunkMeshData>()
+                                            //.WithDisabled<ChunkActiveState>()
              .WithEntityAccess())
         {
             // ====================================================================
@@ -185,16 +199,18 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
 
             int chunkOffset = chunkOrderIndex * 32768;
 
-            // ====================================================================
-            // КРИТИЧЕСКИЙ ПРЕДОХРАНИТЕЛЬ: МГНОВЕННАЯ БЛОКИРОВКА ЧАНКА!
-            // Включаем ChunkActiveState прямо здесь, на месте! 
-            // state.EntityManager.SetComponentEnabled — это НЕ структурное изменение!
-            // Оно легально работает внутри foreach и мгновенно выкидывает чанк из 
-            // этого запроса на все следующие кадры, пока джобы не завершатся!
-            // ====================================================================
-            //state.EntityManager.SetComponentEnabled<ChunkActiveState>(entity, true);
-            m_ActiveStateLookup.SetComponentEnabled(entity, true);
-            // ====================================================================
+            //// ====================================================================
+            //// КРИТИЧЕСКИЙ ПРЕДОХРАНИТЕЛЬ: МГНОВЕННАЯ БЛОКИРОВКА ЧАНКА!
+            //// Включаем ChunkActiveState прямо здесь, на месте! 
+            //// state.EntityManager.SetComponentEnabled — это НЕ структурное изменение!
+            //// Оно легально работает внутри foreach и мгновенно выкидывает чанк из 
+            //// этого запроса на все следующие кадры, пока джобы не завершатся!
+            //// ====================================================================
+            ////state.EntityManager.SetComponentEnabled<ChunkActiveState>(entity, true);
+            state.EntityManager.SetComponentEnabled<ChunkMeshNeedCreate>(entity, false);
+            //ecb.SetComponentEnabled<ChunkMeshNeedRender>(entity, true);
+            //m_ActiveStateLookup.SetComponentEnabled(entity, true);
+            //// ====================================================================
 
             // Выделяем раздельные unmanaged safe-буферы для джобы в Persistent куче кадра
             var tempVertices = new NativeArray<VoxelVertex>(16384, Allocator.Persistent, NativeArrayOptions.ClearMemory);
@@ -214,20 +230,6 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
             };
 
             JobHandle meshJobHandle = greedyJob.Schedule(state.Dependency);
-
-            //state.Dependency = meshJobHandle;
-
-            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
-            //var bakeStatusJob = new MarkChunkAsReadyJob
-            //{
-            //    Ecb = ecb
-            //};
-
-            //JobHandle bakeStatusJobHandle = bakeStatusJob.Schedule(meshJobHandle);
-
-            ////state.Dependency = bakeStatusJobHandle;
 
             m_JobHandles.Add(meshJobHandle);
 

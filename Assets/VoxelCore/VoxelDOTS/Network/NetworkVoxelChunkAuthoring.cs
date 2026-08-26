@@ -65,10 +65,13 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             //indexBuffer.Resize(24576, NativeArrayOptions.ClearMemory);
             //// ====================================================================
 
-            AddComponent<ChunkGraphicsFlushTag>(entity);
-            SetComponentEnabled<ChunkGraphicsFlushTag>(entity, false);
+            AddComponent<ChunkColliderData>(entity);
+            SetComponentEnabled<ChunkColliderData>(entity, false);
 
             // данные для меша
+            AddComponent<ChunkMeshNeedCreate>(entity);
+            SetComponentEnabled<ChunkMeshNeedCreate>(entity, true);
+
             AddComponent<ChunkMeshData>(entity);
             SetComponentEnabled<ChunkMeshData>(entity, false);
 

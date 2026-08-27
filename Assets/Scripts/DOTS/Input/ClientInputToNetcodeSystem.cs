@@ -33,8 +33,11 @@ public partial struct ClientInputToNetcodeSystem : ISystem
             }
 
             // Собираем все доступные машины игрока
-            var availableVehiclesQuery = SystemAPI.QueryBuilder().WithAll<GhostInstance, GhostOwnerIsLocal, AAA_MovementComponent>().Build();
+            var availableVehiclesQuery = SystemAPI.QueryBuilder()
+                .WithAll<GhostInstance, IsControlledTag, AAA_MovementComponent>()
+                .Build();
             var allMyInstances = availableVehiclesQuery.ToComponentDataArray<GhostInstance>(Allocator.Temp);
+            var allEntities = availableVehiclesQuery.ToEntityArray(Allocator.Temp);
 
             if (allMyInstances.Length < 1)
             {
@@ -47,7 +50,7 @@ public partial struct ClientInputToNetcodeSystem : ISystem
 
             for (int i = 0; i < allMyInstances.Length; i++)
             {
-                if ((uint)allMyInstances[i].ghostId == oldGhostId)
+                if ((uint)allMyInstances[i].ghostId == oldGhostId && SystemAPI.IsComponentEnabled<IsControlledTag>(allEntities[i]))
                 {
                     currentIdx = i;
                     break;
@@ -57,6 +60,10 @@ public partial struct ClientInputToNetcodeSystem : ISystem
             int nextIdx = (currentIdx + 1) % allMyInstances.Length;
             newGhostId = (uint)allMyInstances[nextIdx].ghostId;
             allMyInstances.Dispose();
+#if UNITY_EDITOR
+            UnityEngine.Debug.Log($"[Client]: Хочу поменять управление с {oldGhostId} на {newGhostId}!");
+#endif
+
 
             if (newGhostId > 0)
             {

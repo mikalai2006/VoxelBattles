@@ -40,9 +40,9 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
             // извлекаем данные
             uint newGhostId = request.ValueRO.IdNewEntity;
             uint oldGhostId = request.ValueRO.IdOldEntity;
-            //#if UNITY_EDITOR
-            //            UnityEngine.Debug.Log($"[Server]: Получем RPC для смены машины с {oldGhostId} на {newGhostId}!");
-            //#endif
+#if UNITY_EDITOR
+            UnityEngine.Debug.Log($"[Server]: Получем RPC для смены машины с {oldGhostId} на {newGhostId}!");
+#endif
             // ИСПРАВЛЕНИЕ: Используем NetworkId вместо устаревшего NetworkIdComponent
             if (!state.EntityManager.HasComponent<NetworkId>(clientConnection))
             {
@@ -72,23 +72,25 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
 
             if (targetVehicleEntity != Entity.Null && state.EntityManager.Exists(targetVehicleEntity))
             {
-                // Сверяем права безопасности, чтобы один игрок не угнал чужую воксельную машину
-                GhostOwner vehicleOwner = state.EntityManager.GetComponentData<GhostOwner>(targetVehicleEntity);
+                //// Сверяем права безопасности, чтобы один игрок не угнал чужую воксельную машину
+                //GhostOwner vehicleOwner = state.EntityManager.GetComponentData<GhostOwner>(targetVehicleEntity);
 
-                if (vehicleOwner.NetworkId == clientNetworkId)
+                //if (vehicleOwner.NetworkId == clientNetworkId)
+                //{
+                // Безопасность пройдена! Очищаем IsControlledTag со ВСЕХ старых машин этого игрока на сервере
+                foreach (var (owner, vehicle) in SystemAPI.Query<GhostOwnerIsLocal>().WithAll<IsControlledTag>().WithEntityAccess())
                 {
-                    // Безопасность пройдена! Очищаем IsControlledTag со ВСЕХ старых машин этого игрока на сервере
-                    foreach (var (owner, vehicle) in SystemAPI.Query<GhostOwner>().WithAll<IsControlledTag>().WithEntityAccess())
-                    {
-                        if (owner.NetworkId == clientNetworkId)
-                        {
-                            ecb.SetComponent(vehicle, new IsControlledTag { IsActive = false });
-                        }
-                    }
-
-                    // Вешаем тег активного управления на новую одобренную сервером машину
-                    ecb.SetComponent<IsControlledTag>(targetVehicleEntity, new IsControlledTag { IsActive = true });
+                    //if (owner.NetworkId == clientNetworkId)
+                    //{
+                    ecb.SetComponent(vehicle, new IsControlledTag { IsActive = false });
+                    ecb.SetComponent(vehicle, new GhostOwner { NetworkId = -1 });
+                    //}
                 }
+
+                // Вешаем тег активного управления на новую одобренную сервером машину
+                ecb.SetComponent<IsControlledTag>(targetVehicleEntity, new IsControlledTag { IsActive = true });
+                ecb.SetComponent(targetVehicleEntity, new GhostOwner { NetworkId = clientNetworkId });
+                //}
             }
 
 

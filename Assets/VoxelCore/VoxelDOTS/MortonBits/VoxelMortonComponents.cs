@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -29,7 +30,7 @@ public struct NetworkParent : IComponentData
 
 // Тег корневой сущности воксельного объекта
 public struct VoxelModelRootTag : IComponentData { }
-public struct NeedsMeshRebuildTag : IComponentData { }
+//public struct NeedsMeshRebuildTag : IComponentData { }
 public struct VoxelChunkLinkedTag : IComponentData { }
 
 // Настройки модели на корневом объекте
@@ -45,8 +46,17 @@ public struct VoxelModelRootData : IComponentData
 [InternalBufferCapacity(512)]
 public struct LocalChunkDestructionMask : IBufferElementData
 {
-    [GhostField]
+    //[GhostField(Quantization = 0)]
     public ulong Value;
+}
+
+public struct NetworkChunkRleUpdate : IRpcCommand
+{
+    // К какому именно чанку применить изменения
+    public Entity TargetChunkEntity;
+
+    // Сюда мы запишем последовательность пар [повторения, значение]
+    public FixedList512Bytes<byte> CompressedBytes;
 }
 
 // Рантайм-метаданные чанка для Presentation-конвейера

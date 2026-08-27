@@ -56,7 +56,7 @@ public partial struct ServerSpawnRpcHandlerSystem : ISystem
             Entity rootEntity = ecb.Instantiate(prefabConfig.RootGhostPrefab);
 
             // Ќј«Ќј„ј≈ћ ¬Ћјƒ≈Ћ№÷ј (теперь это безопасно, так как мы пишем команду в ECB, а не читаем)
-            ecb.AddComponent(rootEntity, new GhostOwner { NetworkId = clientNetworkId });
+            ecb.AddComponent(rootEntity, new GhostOwner { NetworkId = -1 }); //clientNetworkId
 
             ecb.SetComponent(rootEntity, new LocalTransform
             {

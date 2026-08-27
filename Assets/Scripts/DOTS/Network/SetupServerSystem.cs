@@ -39,6 +39,7 @@ public partial struct SetupServerSystem : ISystem
             {
                 // Настраиваем сервер на стабильные 60 тиков в секунду (или 30, как в вашем проекте)
                 tickRate.ValueRW.SimulationTickRate = 60;
+                tickRate.ValueRW.NetworkTickRate = 60;
 
                 //// КРИТИЧЕСКИЙ ФИКС: Отключаем батчинг пакетов на транспортном уровне, 
                 //// если сервер работает локально в редакторе (в режиме Multiplayer Play Mode)

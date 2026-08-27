@@ -65,6 +65,7 @@ public partial struct NetworkParentSystem : ISystem
             if (foundVehicleEntity != Entity.Null && state.EntityManager.Exists(foundVehicleEntity))
             {
                 var rootData = SystemAPI.GetComponent<VoxelModelHeader>(chunkEntity);
+                //var rootDataGhostInstance = SystemAPI.GetComponent<GhostInstance>(chunkEntity);
                 // Ищем шаблон в unmanaged-кэше синглтона по хэшу
                 if (!modelCache.Templates.TryGetValue(rootData.ConfigHashName, out var template))
                 {
@@ -73,6 +74,17 @@ public partial struct NetworkParentSystem : ISystem
 #endif
                     continue;
                 }
+
+                // планируем получение маски разрушений.
+                // Легально и безопасно получаем сущность сетевого соединения
+                Entity connectionEntity = SystemAPI.GetSingletonEntity<NetworkId>();
+                Entity rpcRequestMask = ecb.CreateEntity();
+                ecb.AddComponent(rpcRequestMask, new RequestMaskFromServerRpc
+                {
+                    GhostInstance = netParent.ValueRO.ParentGhostId//(uint)rootDataGhostInstance.ghostId,
+                });
+                ecb.AddComponent(rpcRequestMask, new SendRpcCommandRequest { TargetConnection = connectionEntity });
+
 
                 // Связываем иерархию в ECS
                 ecb.AddComponent(chunkEntity, new Parent { Value = foundVehicleEntity });

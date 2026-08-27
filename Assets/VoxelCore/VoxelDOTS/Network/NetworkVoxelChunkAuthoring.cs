@@ -66,14 +66,14 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             //// ====================================================================
 
             AddComponent<ChunkColliderNeedCreate>(entity);
-            SetComponentEnabled<ChunkColliderNeedCreate>(entity, true);
+            SetComponentEnabled<ChunkColliderNeedCreate>(entity, false);
 
             AddComponent<ChunkColliderData>(entity);
             SetComponentEnabled<ChunkColliderData>(entity, false);
 
             // данные для меша
             AddComponent<ChunkMeshNeedCreate>(entity);
-            SetComponentEnabled<ChunkMeshNeedCreate>(entity, true);
+            SetComponentEnabled<ChunkMeshNeedCreate>(entity, false);
 
             AddComponent<ChunkMeshData>(entity);
             SetComponentEnabled<ChunkMeshData>(entity, false);

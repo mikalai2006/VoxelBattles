@@ -24,6 +24,7 @@ public struct NewChunkColliderData // : IComponentData, IEnableableComponent
     public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
 }
 
+
 // ====================================================================
 // ЖЕЛЕЗОБЕТОННЫЙ СЕТЕВОЙ ФИКС: Переносим рендер вслед за расчетной системой!
 // Теперь managed-выгрузка в BRG будет просыпаться строго один раз в кадр,
@@ -175,7 +176,8 @@ public partial class ApplyColliderSystem : SystemBase
                     compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
                     {
                         Collider = chunksDataArray[i].SafeColliderBlob[0],
-                        CompoundFromChild = new RigidTransform(quaternion.identity, childOffsetsList[i])
+                        CompoundFromChild = new RigidTransform(quaternion.identity, childOffsetsList[i]),
+                        Entity = chunksDataArray[i].TargetEntity
                     };
                     currentInstanceIdx++;
                 }

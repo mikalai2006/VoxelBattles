@@ -2,11 +2,18 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 
-[GhostComponent] // Помечает компонент для генератора Netcode
+//[GhostComponent] // Помечает компонент для генератора Netcode
+//public struct AAA_InputComponent : IInputComponentData
+//{
+//    [GhostField(Quantization = 100)] // Этот атрибут заставит Netcode синхронизировать ввод!
+//    public float2 MoveInput;
+//}
+[GhostComponent]
 public struct AAA_InputComponent : IInputComponentData
 {
-    [GhostField] // Этот атрибут заставит Netcode синхронизировать ввод!
-    public float2 MoveInput;
+    // Оставляем только чистое поле типа byte для идеальной сетевой репликации
+    [GhostField]
+    public byte ButtonsMask;
 }
 
 

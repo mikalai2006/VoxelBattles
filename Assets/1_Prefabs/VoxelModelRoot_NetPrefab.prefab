@@ -117,12 +117,12 @@ MonoBehaviour:
     EntityIndex: 0
     PrefabType: 7
     SendTypeOptimization: -1
-    VariantHash: 3828067354630405971
+    VariantHash: 14630463926810551275
   - FullTypeName: Unity.Transforms.LocalTransform
     EntityIndex: 0
     PrefabType: 7
     SendTypeOptimization: -1
-    VariantHash: 17312028693704544116
+    VariantHash: 8912562172056573735
   - FullTypeName: VoxelModelRootData
     EntityIndex: 0
     PrefabType: 7

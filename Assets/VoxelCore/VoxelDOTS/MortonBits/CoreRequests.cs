@@ -1,9 +1,21 @@
-using Unity.Entities;
+using Unity.Collections;
 using Unity.Mathematics;
+using Unity.NetCode;
 
-public struct VoxelExplosionRequest : IComponentData
+public struct VoxelExplosionRequestRpc : IRpcCommand
 {
-    public Entity TargetEntity; // В какую машину/чанк попали
-    public float3 WorldPosition; // Точка клика в мире
+    public float3 RayOrigin;      // Откуда стреляем (позиция камеры)
+    public float3 RayDirection;  // Куда стреляем (нормализованный вектор)
     public float Radius;         // Радиус взрыва
+}
+
+public struct RequestMaskFromServerRpc : IRpcCommand
+{
+    public uint GhostInstance;
+}
+
+public struct ReplyMaskToClientRpc : IRpcCommand
+{
+    public uint GhostInstance;
+    public FixedList512Bytes<byte> CompressedBytes;
 }

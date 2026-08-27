@@ -94,7 +94,14 @@ public partial struct AAAMovementSystem : ISystem
             // ====================================================================
             // 2. ÐÀÑ×ÅÒ ËÈÍÅÉÍÎÉ ÑÊÎÐÎÑÒÈ (ÂÀØÀ ËÎÃÈÊÀ ÁÅÇ ÈÇÌÅÍÅÍÈÉ)
             // ====================================================================
-            float3 targetDirection = new float3(inputData.MoveInput.x, 0, inputData.MoveInput.y);
+            //float3 targetDirection = new float3(inputData.MoveInput.x, 0, inputData.MoveInput.y);
+
+            // Ðàñïàêîâûâàåì 1 áàéò áèòîâîé ìàñêè â ÷èñòûé float2 âåêòîð
+            float2 moveVector = VoxelInputPackingUtility.UnpackBitsToFloat2(inputData.ButtonsMask);
+
+            // Èäåàëüíî ñîáèðàåì ôèíàëüíûé 3D-âåêòîð íàïðàâëåíèÿ äâèæåíèÿ ìàøèíû
+            float3 targetDirection = new float3(moveVector.x, 0, moveVector.y);
+
             if (math.lengthsq(targetDirection) > 1f)
             {
                 targetDirection = math.normalize(targetDirection);

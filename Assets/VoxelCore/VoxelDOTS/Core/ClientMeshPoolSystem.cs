@@ -15,6 +15,8 @@ public partial class ClientMeshPoolSystem : SystemBase
     private readonly Stack<Mesh> _availableMeshes = new Stack<Mesh>();
     // Хранилище активных мешей, чтобы находить их по ID без привязки к managed-компонентам на Entity
     private readonly Dictionary<int, Mesh> _activeMeshes = new Dictionary<int, Mesh>();
+
+    private readonly Stack<int> _availableIds = new Stack<int>();
     private int _idCounter = 0;
 
     public static ClientMeshPoolSystem Get(World world) => world.GetOrCreateSystemManaged<ClientMeshPoolSystem>();
@@ -26,6 +28,10 @@ public partial class ClientMeshPoolSystem : SystemBase
             Mesh mesh = new Mesh();
             mesh.MarkDynamic();
             _availableMeshes.Push(mesh);
+
+            // Заранее генерируем ID под стартовые меши
+            _idCounter++;
+            _availableIds.Push(_idCounter);
         }
 
         base.OnCreate();
@@ -50,8 +56,18 @@ public partial class ClientMeshPoolSystem : SystemBase
             mesh.Clear();
         }
 
-        _idCounter++;
-        meshId = _idCounter;
+        if (_availableIds.Count > 0)
+        {
+            meshId = _availableIds.Pop();
+        }
+        else
+        {
+            _idCounter++;
+            meshId = _idCounter;
+        }
+
+        //_idCounter++;
+        //meshId = _idCounter;
         _activeMeshes[meshId] = mesh;
         return mesh;
     }
@@ -60,6 +76,25 @@ public partial class ClientMeshPoolSystem : SystemBase
     public bool TryGetActiveMesh(int id, out Mesh mesh)
     {
         return _activeMeshes.TryGetValue(id, out mesh);
+    }
+
+    /// <summary>
+    /// Возвращает меш в пул
+    /// </summary>
+    /// <param name="meshId"></param>
+    public void ReturnToPool(int id)
+    {
+        if (_activeMeshes.TryGetValue(id, out Mesh mesh))
+        {
+            if (mesh != null)
+            {
+                mesh.Clear();
+                _availableMeshes.Push(mesh);
+            }
+            _activeMeshes.Remove(id);
+
+            _availableIds.Push(id);
+        }
     }
 
 
@@ -71,7 +106,7 @@ public partial class ClientMeshPoolSystem : SystemBase
 
         //// 2. Ищем сущности, у которых БЫЛ меш, но сами данные чанка исчезли (деспавн сети)
         //// Использование SystemAPI.Query БЕЗОПАСНО для сети и не ломает потоки
-        //foreach (var (meshLink, entity) in SystemAPI.Query<RefRO<ChunkMeshLink>>().WithAll<TODO>().WithEntityAccess())
+        //foreach (var (meshLink, entity) in SystemAPI.Query<RefRO<ChunkMeshLink>>().WithAll<MaterialMeshInfo>().WithEntityAccess())
         //{
         //    int id = meshLink.ValueRO.PoolInstanceId;
 
@@ -116,5 +151,7 @@ public partial class ClientMeshPoolSystem : SystemBase
 #if UNITY_EDITOR
         UnityEngine.Debug.LogWarning($"Mesh OnDestroy: countAvai={countAvai}, count={count}");
 #endif
+
+        _availableIds.Clear();
     }
 }

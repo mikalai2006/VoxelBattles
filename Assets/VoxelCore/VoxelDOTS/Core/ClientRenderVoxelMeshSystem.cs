@@ -252,8 +252,6 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
 
         for (int i = 0; i < chunksData.Length; i++)
         {
-            //var chunkData = chunksData[i];
-            // ПРАВИЛЬНО: берем данные строго по ссылке, без побитового копирования!
             ref readonly var chunkData = ref chunksData.ElementAt(i);
             int3 finalCounts = chunkData.SafeCounter[0];
             int vertexCount = finalCounts.x;
@@ -261,9 +259,6 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
 
             if (vertexCount == 0)
             {
-                //if (chunkData.SafeVertices.IsCreated) chunkData.SafeVertices.Dispose();
-                //if (chunkData.SafeIndices.IsCreated) chunkData.SafeIndices.Dispose();
-
                 if (chunkData.HasGraphicsBefore)
                 {
                     var emptyInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
@@ -272,11 +267,20 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
                 }
                 ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
                 ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);
-
                 continue;
             }
 
-            // Выделяем С++ контейнеры под меш строго под вычисленный в джобе размер
+            // ==========================================
+            // 1. ПОДГОТОВКА: Всегда берем СВЕЖИЙ/СВОБОДНЫЙ меш из пула
+            // ==========================================
+            int nextMeshId = -1;
+            var poolSystem = ClientMeshPoolSystem.Get(this.World);
+
+            // Берем из пула чистый меш, который сейчас точно НЕ рендерится графическим движком
+            Mesh runtimeMesh = poolSystem.GetMesh(out nextMeshId);
+            runtimeMesh.Clear();
+
+            // Выделяем С++ буферы под меш
             var meshDataArray = Mesh.AllocateWritableMeshData(1);
             var meshData = meshDataArray[0];
 
@@ -287,80 +291,219 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
             meshData.SetIndexBufferParams(indexCount, IndexFormat.UInt32);
             attributes.Dispose();
 
-            // Создаем безопасные sub-array окна видимости одинаковой длины
             var activeVerticesSubArray = chunkData.SafeVertices.GetSubArray(0, vertexCount);
             var activeIndicesSubArray = chunkData.SafeIndices.GetSubArray(0, indexCount);
 
-            // Копируем массивы напрямую в MeshData
             meshData.GetVertexData<VoxelVertex>(0).CopyFrom(activeVerticesSubArray);
             meshData.GetIndexData<int>().CopyFrom(activeIndicesSubArray);
 
             meshData.subMeshCount = 1;
             meshData.SetSubMesh(0, new SubMeshDescriptor(0, indexCount) { topology = MeshTopology.Triangles, vertexCount = vertexCount }, MeshUpdateFlags.DontRecalculateBounds);
 
-            //Mesh runtimeMesh = new Mesh();
-            //Mesh runtimeMesh = VoxelNetMeshPoolSystem.Get(this.World).GetMesh(out meshId);
-            //runtimeMesh.name = "VoxelChunk_SafeDirect_BurstOptimized";
 
-            // Получаем меш и сетевой ID из пула
-            int activeMeshId = -1;
-            Mesh runtimeMesh = null;
-
-            // 1. Получаем систему пула текущего ECS-мира
-            var poolSystem = ClientMeshPoolSystem.Get(this.World);
-
-            // 2. Проверяем, существует ли целевая сущность и есть ли у неё уже привязанный меш
-            if (EntityManager.Exists(chunkData.TargetEntity) && EntityManager.HasComponent<ChunkMeshLink>(chunkData.TargetEntity))
-            {
-                // Извлекаем текущий ID меша, который закреплен за чанком
-                ChunkMeshLink currentLink = EntityManager.GetComponentData<ChunkMeshLink>(chunkData.TargetEntity);
-                int currentId = currentLink.PoolInstanceId;
-
-                // Пытаемся достать этот ЖИВОЙ меш из словаря активных мешей пула
-                // (Для этого добавьте в класс VoxelNetMeshPoolSystem публичный метод или свойство для доступа к _activeMeshes)
-                if (poolSystem.TryGetActiveMesh(currentId, out Mesh existingMesh))
-                {
-                    activeMeshId = currentId;
-                    runtimeMesh = existingMesh;
-                }
-            }
-
-            // 3. Если меша еще не было (первая генерация чанка), ТОЛЬКО ТОГДА берем новый из пула
-            if (runtimeMesh == null)
-            {
-                runtimeMesh = poolSystem.GetMesh(out activeMeshId);
-
-                // Безопасно для сети добавляем компонент-ссылку (так как его точно не было)
-                if (EntityManager.Exists(chunkData.TargetEntity))
-                {
-                    EntityManager.AddComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = activeMeshId });
-                }
-            }
-
+            UnityEngine.Debug.LogWarning($"[Client]: Render Mesh #{nextMeshId}");
+            // Заливаем данные в СВЕЖИЙ меш
             Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, runtimeMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontValidateLodRanges | MeshUpdateFlags.DontRecalculateBounds);
-            //runtimeMesh.RecalculateBounds();
+            runtimeMesh.RecalculateBounds();
 
-
-            BatchMeshID runtimeMeshId = graphicsSystem.RegisterMesh(runtimeMesh);
-            var finalMaterialMeshInfo = new MaterialMeshInfo(brgConfig.OpaqueMaterialRuntimeID, runtimeMeshId);
+            // ==========================================
+            // 2. РЕГИСТРАЦИЯ: Получаем абсолютно новый BatchMeshID
+            // ==========================================
+            BatchMeshID newMeshId = graphicsSystem.RegisterMesh(runtimeMesh);
+            var finalMaterialMeshInfo = new MaterialMeshInfo(brgConfig.OpaqueMaterialRuntimeID, newMeshId);
 
             bool currentHasGraphics = state.EntityManager.HasComponent<MaterialMeshInfo>(chunkData.TargetEntity);
 
             if (!currentHasGraphics)
             {
+                // Первая сборка чанка:
                 RenderMeshUtility.AddComponents(chunkData.TargetEntity, state.EntityManager, renderMeshDescription, finalMaterialMeshInfo);
                 state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
                 state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+
+                // Привязываем индекс пула к сущности
+                state.EntityManager.AddComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = nextMeshId });
             }
             else
             {
-                var oldInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
-                if (oldInfo.MeshID != BatchMeshID.Null && oldInfo.MeshID != brgConfig.EmptyMeshID) graphicsSystem.UnregisterMesh(oldInfo.MeshID);
+                // ==========================================
+                // 3. Смена ID (AAA Hot-Swapping)
+                // ==========================================
 
-                ecb.SetComponent(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
-                ecb.SetComponent(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
-                ecb.SetComponent(chunkData.TargetEntity, finalMaterialMeshInfo);
+                // Сохраняем ссылки на СТАРЫЙ меш и его ID в BRG до переключения
+                var oldInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
+                ChunkMeshLink oldLink = state.EntityManager.GetComponentData<ChunkMeshLink>(chunkData.TargetEntity);
+                int oldPoolId = oldLink.PoolInstanceId;
+
+                // Мгновенно переключаем рендерер на НОВЫЙ меш (без задержек кадра)
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, finalMaterialMeshInfo);
+
+                // Запоминаем в ссылке новый ID из пула
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = nextMeshId });
+
+                // ==========================================
+                // 4. ОЧИСТКА: Удаляем старый ID и возвращаем старый меш в пул
+                // ==========================================
+                if (oldInfo.MeshID != BatchMeshID.Null && oldInfo.MeshID != brgConfig.EmptyMeshID)
+                {
+                    // Удаляем старый ID из BRG (теперь это безопасно, движок его больше не рендерит)
+                    graphicsSystem.UnregisterMesh(oldInfo.MeshID);
+                }
+
+                // Возвращаем старый освободившийся меш обратно в систему пула для повторного использования
+                poolSystem.ReturnToPool(oldPoolId);
             }
+
+
+
+            //UnityEngine.Debug.LogWarning($"[Client]: Render Mesh");
+
+
+            ////var chunkData = chunksData[i];
+            //// ПРАВИЛЬНО: берем данные строго по ссылке, без побитового копирования!
+            //ref readonly var chunkData = ref chunksData.ElementAt(i);
+            //int3 finalCounts = chunkData.SafeCounter[0];
+            //int vertexCount = finalCounts.x;
+            //int indexCount = finalCounts.y;
+
+            //if (vertexCount == 0)
+            //{
+            //    //if (chunkData.SafeVertices.IsCreated) chunkData.SafeVertices.Dispose();
+            //    //if (chunkData.SafeIndices.IsCreated) chunkData.SafeIndices.Dispose();
+
+            //    if (chunkData.HasGraphicsBefore)
+            //    {
+            //        var emptyInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
+            //        emptyInfo.MeshID = brgConfig.EmptyMeshID;
+            //        ecb.SetComponent(chunkData.TargetEntity, emptyInfo);
+            //    }
+            //    ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
+            //    ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);
+
+            //    continue;
+            //}
+
+            //// Выделяем С++ контейнеры под меш строго под вычисленный в джобе размер
+            //var meshDataArray = Mesh.AllocateWritableMeshData(1);
+            //var meshData = meshDataArray[0];
+
+            //var attributes = new NativeArray<VertexAttributeDescriptor>(2, Allocator.Temp);
+            //attributes[0] = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
+            //attributes[1] = new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4, 0);
+            //meshData.SetVertexBufferParams(vertexCount, attributes);
+            //meshData.SetIndexBufferParams(indexCount, IndexFormat.UInt32);
+            //attributes.Dispose();
+
+            //// Создаем безопасные sub-array окна видимости одинаковой длины
+            //var activeVerticesSubArray = chunkData.SafeVertices.GetSubArray(0, vertexCount);
+            //var activeIndicesSubArray = chunkData.SafeIndices.GetSubArray(0, indexCount);
+
+            //// Копируем массивы напрямую в MeshData
+            //meshData.GetVertexData<VoxelVertex>(0).CopyFrom(activeVerticesSubArray);
+            //meshData.GetIndexData<int>().CopyFrom(activeIndicesSubArray);
+
+            //meshData.subMeshCount = 1;
+            //meshData.SetSubMesh(0, new SubMeshDescriptor(0, indexCount) { topology = MeshTopology.Triangles, vertexCount = vertexCount }, MeshUpdateFlags.DontRecalculateBounds);
+
+            ////Mesh runtimeMesh = new Mesh();
+            ////Mesh runtimeMesh = VoxelNetMeshPoolSystem.Get(this.World).GetMesh(out meshId);
+            ////runtimeMesh.name = "VoxelChunk_SafeDirect_BurstOptimized";
+
+            //// Получаем меш и сетевой ID из пула
+            //int activeMeshId = -1;
+            //Mesh runtimeMesh = null;
+
+            //// 1. Получаем систему пула текущего ECS-мира
+            //var poolSystem = ClientMeshPoolSystem.Get(this.World);
+
+            //// 2. Проверяем, существует ли целевая сущность и есть ли у неё уже привязанный меш
+            //if (EntityManager.Exists(chunkData.TargetEntity) && EntityManager.HasComponent<ChunkMeshLink>(chunkData.TargetEntity))
+            //{
+            //    // Извлекаем текущий ID меша, который закреплен за чанком
+            //    ChunkMeshLink currentLink = EntityManager.GetComponentData<ChunkMeshLink>(chunkData.TargetEntity);
+            //    int currentId = currentLink.PoolInstanceId;
+
+            //    // Пытаемся достать этот ЖИВОЙ меш из словаря активных мешей пула
+            //    // (Для этого добавьте в класс VoxelNetMeshPoolSystem публичный метод или свойство для доступа к _activeMeshes)
+            //    if (poolSystem.TryGetActiveMesh(currentId, out Mesh existingMesh))
+            //    {
+            //        activeMeshId = currentId;
+            //        runtimeMesh = existingMesh;
+            //    }
+            //}
+
+            //// 3. Если меша еще не было (первая генерация чанка), ТОЛЬКО ТОГДА берем новый из пула
+            //if (runtimeMesh == null)
+            //{
+            //    runtimeMesh = poolSystem.GetMesh(out activeMeshId);
+
+
+            //    // Безопасно для сети добавляем компонент-ссылку (так как его точно не было)
+            //    if (EntityManager.Exists(chunkData.TargetEntity))
+            //    {
+            //        EntityManager.AddComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = activeMeshId });
+            //    }
+            //}
+
+            //runtimeMesh.Clear();
+
+            //Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, runtimeMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontValidateLodRanges | MeshUpdateFlags.DontRecalculateBounds);
+            ////runtimeMesh.RecalculateBounds();
+
+            //// 1. Сразу регистрируем обновленный меш в графической системе и получаем НОВЫЙ ID
+            //BatchMeshID runtimeMeshId = graphicsSystem.RegisterMesh(runtimeMesh);
+            //var finalMaterialMeshInfo = new MaterialMeshInfo(brgConfig.OpaqueMaterialRuntimeID, runtimeMeshId);
+
+            //bool currentHasGraphics = state.EntityManager.HasComponent<MaterialMeshInfo>(chunkData.TargetEntity);
+
+            //if (!currentHasGraphics)
+            //{
+            //    // Первая инициализация чанка: добавляем компоненты рендеринга
+            //    RenderMeshUtility.AddComponents(chunkData.TargetEntity, state.EntityManager, renderMeshDescription, finalMaterialMeshInfo);
+            //    state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
+            //    state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+            //}
+            //else
+            //{
+            //    // 2. ИСПРАВЛЕНИЕ: Сохраняем старый ID перед обновлением
+            //    var oldInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
+
+            //    // 3. ИСПРАВЛЕНИЕ: Обновляем данные СИНХРОННО через EntityManager, а не через ecb.
+            //    // Это гарантирует, что рендерер Unity мгновенно переключится со старого ID на новый без мерцания.
+            //    state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
+            //    state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+            //    state.EntityManager.SetComponentData(chunkData.TargetEntity, finalMaterialMeshInfo);
+
+            //    // 4. ИСПРАВЛЕНИЕ: Безопасно удаляем старый меш из BRG ТОЛЬКО ПОСЛЕ ТОГО, 
+            //    // как сущность успешно переключилась на новый finalMaterialMeshInfo.
+            //    if (oldInfo.MeshID != BatchMeshID.Null && oldInfo.MeshID != brgConfig.EmptyMeshID)
+            //    {
+            //        // Теперь это не вызовет падения рендера, так как старый ID больше никто не использует
+            //        graphicsSystem.UnregisterMesh(oldInfo.MeshID);
+            //    }
+            //}
+            ////BatchMeshID runtimeMeshId = graphicsSystem.RegisterMesh(runtimeMesh);
+            ////var finalMaterialMeshInfo = new MaterialMeshInfo(brgConfig.OpaqueMaterialRuntimeID, runtimeMeshId);
+
+            ////bool currentHasGraphics = state.EntityManager.HasComponent<MaterialMeshInfo>(chunkData.TargetEntity);
+
+            ////if (!currentHasGraphics)
+            ////{
+            ////    RenderMeshUtility.AddComponents(chunkData.TargetEntity, state.EntityManager, renderMeshDescription, finalMaterialMeshInfo);
+            ////    state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
+            ////    state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+            ////}
+            ////else
+            ////{
+            ////    var oldInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
+            ////    if (oldInfo.MeshID != BatchMeshID.Null && oldInfo.MeshID != brgConfig.EmptyMeshID) graphicsSystem.UnregisterMesh(oldInfo.MeshID);
+
+            ////    ecb.SetComponent(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
+            ////    ecb.SetComponent(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+            ////    ecb.SetComponent(chunkData.TargetEntity, finalMaterialMeshInfo);
+            ////}
 
             ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
             ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);

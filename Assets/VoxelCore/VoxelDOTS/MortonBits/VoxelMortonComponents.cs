@@ -1,6 +1,8 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
+using Unity.Physics;
 
 // Хэш модели, чтобы заглянуть в GlobalVoxelModelCache
 public struct VoxelModelHeader : IComponentData
@@ -87,6 +89,14 @@ public struct VoxelColliderCleanupMarker //: IComponentData //, ICleanupComponen
     // Безопасный ECS-список для хранения дочерних коллайдеров воксельных чанков.
     // Вмещает до 15 чанков на одну машину (если чанков больше, используйте FixedList512Bytes)
     //public FixedList128Bytes<BlobAssetReference<Unity.Physics.Collider>> ChildBlobs;
+}
+
+public struct VoxelChildColliderRegistrySingleton : IComponentData
+{
+    // Синглтон просто хранит ссылки на нативные контейнеры, 
+    // которые выделены в неуправляемой куче (Persistent)
+    public NativeParallelHashMap<Entity, NativeArray<BlobAssetReference<Unity.Physics.Collider>>> Registry;
+    public NativeList<BlobAssetReference<Collider>> DisposeList;
 }
 
 ///// <summary>

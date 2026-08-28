@@ -314,17 +314,17 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                     //    }
                                     //}
 
-#if UNITY_EDITOR
-                                    //UnityEngine.Debug.Log($"[Server]: данные voxelRadius={voxelRadius}, centerVoxel={centerVoxel}!");
+                                    //#if UNITY_EDITOR
+                                    //                                    //UnityEngine.Debug.Log($"[Server]: данные voxelRadius={voxelRadius}, centerVoxel={centerVoxel}!");
 
-                                    //UnityEngine.Debug.Log($"[Voxel Detector]: В чанке {hitChunkEntity}. Всего вокселей={totalVoxels}, уничтожено  {totalDestroyedVoxels} вокселей.");
-                                    UnityEngine.Debug.LogWarning($"[Voxel Detector] Кликнул в чанк {targetChunkCoords}\r\n" +
-                                        $"voxelRadius={voxelRadius}\r\n" +
-                                        $"centerVoxel={centerVoxel}\r\n" +
-                                        $"Всего вокселей: {totalVoxels}\r\n" +
-                                        //$"Уничтожено сейчас: {nowDestroyed} вокселей" +
-                                        $"Уничтожено всего: {totalDestroyedVoxels} вокселей");
-#endif
+                                    //                                    //UnityEngine.Debug.Log($"[Voxel Detector]: В чанке {hitChunkEntity}. Всего вокселей={totalVoxels}, уничтожено  {totalDestroyedVoxels} вокселей.");
+                                    //                                    UnityEngine.Debug.LogWarning($"[Voxel Detector] Кликнул в чанк {targetChunkCoords}\r\n" +
+                                    //                                        $"voxelRadius={voxelRadius}\r\n" +
+                                    //                                        $"centerVoxel={centerVoxel}\r\n" +
+                                    //                                        $"Всего вокселей: {totalVoxels}\r\n" +
+                                    //                                        //$"Уничтожено сейчас: {nowDestroyed} вокселей" +
+                                    //                                        $"Уничтожено всего: {totalDestroyedVoxels} вокселей");
+                                    //#endif
                                     //DynamicBuffer<LocalChunkDestructionMask> destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(hitChunkEntity);
 
                                     ////int3 centerVoxel = (int3)math.round(hitLocalPos);
@@ -425,13 +425,13 @@ public partial struct VoxelExplosionServerSystem : ISystem
 
                                         // 3. Вызываем наш SAFE статический метод сжатия
                                         ChunkRleSerializer.CompressToRle(destructionMask.AsNativeArray(), ref rleRpc.CompressedBytes);
-#if UNITY_EDITOR
-                                        UnityEngine.Debug.Log($"[Server]: Explode: Создаем RPC для ответа маски изменений для ghostId={ghostInstanceComponent.ghostId}" +
-                                            $"\r\n RLE.Length={rleRpc.CompressedBytes.Length}" +
-                                            $"\r\n RLE.Capacity={rleRpc.CompressedBytes.Capacity}" +
-                                        $"\r\n destructionMask.Length={destructionMask.Length}" +
-                                        $"\r\n destructionMask.Capacity={destructionMask.Capacity}");
-#endif
+                                        //#if UNITY_EDITOR
+                                        //                                        UnityEngine.Debug.Log($"[Server]: Explode: Создаем RPC для ответа маски изменений для ghostId={ghostInstanceComponent.ghostId}" +
+                                        //                                            $"\r\n RLE.Length={rleRpc.CompressedBytes.Length}" +
+                                        //                                            $"\r\n RLE.Capacity={rleRpc.CompressedBytes.Capacity}" +
+                                        //                                        $"\r\n destructionMask.Length={destructionMask.Length}" +
+                                        //                                        $"\r\n destructionMask.Capacity={destructionMask.Capacity}");
+                                        //#endif
                                         // ====================================================================
                                         // ЧИСТЫЙ И ПРАВИЛЬНЫЙ ECS-СПОСОБ ОТПРАВКИ RPC
                                         // ====================================================================

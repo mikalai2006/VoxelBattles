@@ -48,11 +48,14 @@ public struct GenerateChunkColliderJob : IJob
                 ProcessLayerGreedyMesh(h, dir, visited, vertices, triangles);
             }
         }
-
         // ≈сли вершин нет, значит весь чанк пустой
         if (vertices.Length == 0)
         {
             OutputColliderBlob[0] = default;
+            vertices.Dispose();
+            triangles.Dispose();
+            directions.Dispose();
+            visited.Dispose();
             return;
         }
 

@@ -17,7 +17,7 @@ public struct ChunkColliderData : IComponentData, IEnableableComponent
     //public NativeArray<VoxelVertex> SafeVertices;
     //public NativeArray<int> SafeIndices;
     public NativeArray<int3> SafeCounter;
-    public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
+    //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
     //public NativeList<BakedBoxData> BakedBoxes;
     //public BlobAssetReference<Collider> SafeColliderBlob;
 
@@ -63,6 +63,21 @@ public partial struct CreateColliderSystem : ISystem
     //[BurstCompile(CompileSynchronously = true)]
     public void OnCreate(ref SystemState state)
     {
+        // Выделяем память под контейнеры
+        var registry = new NativeParallelHashMap<Entity, NativeArray<BlobAssetReference<Unity.Physics.Collider>>>(10000, Allocator.Persistent);
+        var disposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
+
+        // Создаем сущность-синглтон и записываем туда ссылки
+        if (state.World.IsClient() || state.World.IsServer())
+        {
+            Entity singletonEntity = state.EntityManager.CreateEntity();
+            state.EntityManager.AddComponentData(singletonEntity, new VoxelChildColliderRegistrySingleton
+            {
+                Registry = registry,
+                DisposeList = disposeList
+            });
+        }
+
         state.RequireForUpdate<GlobalVoxelModelCache>();
         state.RequireForUpdate<VoxelGlobalConfigComponent>();
 
@@ -83,10 +98,52 @@ public partial struct CreateColliderSystem : ISystem
         m_GhostInstanceLookup = state.GetComponentLookup<Unity.NetCode.GhostInstance>(true);
     }
 
-
     [BurstCompile(CompileSynchronously = true)]
     public void OnDestroy(ref SystemState state)
     {
+        // Уничтожать контейнеры нужно строго там же, где создавали, чтобы избежать утечек
+        if (SystemAPI.TryGetSingleton<VoxelChildColliderRegistrySingleton>(out var singleton))
+        {
+            // 1. Очищаем коллайдеры, оставшиеся в реестре
+            if (singleton.Registry.IsCreated)
+            {
+                // Получаем массив всех значений (маркеров) из хэш-мапы
+                var markers = singleton.Registry.GetValueArray(Allocator.Temp);
+
+                for (int i = 0; i < markers.Length; i++)
+                {
+                    var marker = markers[i];
+                    for (int y = 0; y < marker.Length; y++)
+                    {
+                        if (marker[y].IsCreated)
+                        {
+                            marker[y].Dispose();
+                        }
+                    }
+                    marker.Dispose();
+                }
+                markers.Dispose();
+                // Теперь безопасно удаляем саму хэш-мапу
+                singleton.Registry.Dispose();
+            }
+
+            // 2. Очищаем коллайдеры, которые ожидали утилизации в списке мусора
+            if (singleton.DisposeList.IsCreated)
+            {
+                for (int i = 0; i < singleton.DisposeList.Length; i++)
+                {
+                    var blob = singleton.DisposeList[i];
+                    if (blob.IsCreated)
+                    {
+                        blob.Dispose();
+                    }
+                }
+
+                // Теперь безопасно удаляем сам список
+                singleton.DisposeList.Dispose();
+            }
+        }
+
         if (m_JobHandles.IsCreated) m_JobHandles.Dispose();
     }
 
@@ -97,6 +154,9 @@ public partial struct CreateColliderSystem : ISystem
         if (!SystemAPI.HasSingleton<NetworkTime>()) return;
         var networkTime = SystemAPI.GetSingleton<NetworkTime>();
         NetworkTick currentTick = networkTime.ServerTick;
+
+        // Получаем синглтон коллайдеров для текущего кадра
+        var voxelChildColliderRegistrySingleton = SystemAPI.GetSingleton<VoxelChildColliderRegistrySingleton>();
 
         //// Свойство IsFirstTimePredictedTick сообщает, что Netcode сейчас выполняет 
         //// "свежий" кадр, а не прокручивает историю тиков назад для ресимуляции.
@@ -297,7 +357,6 @@ public partial struct CreateColliderSystem : ISystem
                 FlattenedModelColors = template.FlattenedLinearColors,
                 ChunkOffsetInFlattenedArray = chunkOffset,
             };
-
             //var colliderJob = new PhysicsGreedyJobSafeDirect
             //{
             //    LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
@@ -368,7 +427,7 @@ public partial struct CreateColliderSystem : ISystem
             m_ChunkColliderDataLookup[entity] = new ChunkColliderData
             {
                 LastBakingJobHandle = chunkColliderHandle,
-                SafeColliderBlob = singleChunkColliderBlob,
+                //SafeColliderBlob = singleChunkColliderBlob,
                 SafeCounter = singleChunkCounter,
                 RootVehicleEntity = rootVehicleEntity,
                 LocalOffsetWithPivot = localOffsetWithPivot,
@@ -377,6 +436,34 @@ public partial struct CreateColliderSystem : ISystem
                 HasGraphicsBefore = hasGraphics,
                 index = chunkIndex.ValueRO.Value
             };
+
+
+            if (voxelChildColliderRegistrySingleton.Registry.TryGetValue(entity, out var oldBlob))
+            {
+                //// Потокобезопасно скидываем старый блоб в мусорку
+                //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
+                // 1. Проверяем, что массив вообще был создан (защита от ошибок)
+                if (oldBlob.IsCreated)
+                {
+                    // 2. Отправляем сам физический Blob-коллайдер, лежащий внутри массива, в мусорку
+                    // (Очистку самого блоба система выполнит в конце кадра на главном потоке)
+                    //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
+                    for (int i = 0; i < oldBlob.Length; i++)
+                    {
+                        if (oldBlob[i].IsCreated)
+                        {
+                            oldBlob[i].Dispose();
+                        }
+                    }
+
+                    // 3. ИСПРАВЛЕНИЕ УТЕЧКИ: Полностью уничтожаем сам контейнер старого NativeArray.
+                    // Это освободит память, выделенную под массив на 1 элемент в прошлом кадре.
+                    oldBlob.Dispose();
+                }
+
+            }
+            // добавляем коллайдер чанка
+            voxelChildColliderRegistrySingleton.Registry[entity] = singleChunkColliderBlob;
 
             //var isClient = state.WorldUnmanaged.IsClient();
             //string textWorld = isClient ? "Client" : "Server";

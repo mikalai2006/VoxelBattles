@@ -16,8 +16,8 @@ public struct NewChunkColliderData // : IComponentData, IEnableableComponent
     // ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
     public NativeArray<int3> SafeCounter;
 
-    // МЕНЯЕМ ТИП: Сюда мы сохраним индивидуальный нативный массив чанка
-    public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
+    //// МЕНЯЕМ ТИП: Сюда мы сохраним индивидуальный нативный массив чанка
+    //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
 }
 
 
@@ -35,15 +35,15 @@ public partial class ApplyColliderSystem : SystemBase
     // Нативный реестр: Сетевая Сущность -> Её текущий Blob-коллайдер
     private NativeParallelHashMap<Entity, VoxelColliderCleanupMarker> m_ColliderRegistry;
 
-    private NativeList<BlobAssetReference<Collider>> m_DisposeList;
-
+    //private NativeList<BlobAssetReference<Collider>> m_DisposeList;
     protected override void OnCreate()
     {
-        m_DisposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
+        //m_DisposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
 
         // Выделяем память один раз при старте игры. Настройки сети не затрагиваются.
         m_ColliderRegistry = new NativeParallelHashMap<Entity, VoxelColliderCleanupMarker>(128, Allocator.Persistent);
     }
+
 
     protected override void OnDestroy()
     {
@@ -64,13 +64,25 @@ public partial class ApplyColliderSystem : SystemBase
             // Уничтожаем саму карту
             m_ColliderRegistry.Dispose();
         }
+        //if (m_DisposeList.IsCreated)
+        //{
+        //    for (int i = 0; i < m_DisposeList.Length; i++)
+        //    {
+        //        if (m_DisposeList[i].IsCreated)
+        //        {
+        //            m_DisposeList[i].Dispose(); // Принудительно выгружаем каждый компаунд
+        //        }
+        //    }
 
-        if (m_DisposeList.IsCreated) m_DisposeList.Dispose();
+        //    // Уничтожаем саму карту
+        //    m_DisposeList.Dispose();
+        //}
 
         // Обязательно вызываем базовый метод уничтожения SystemBase!
         base.OnDestroy();
         // ====================================================================
     }
+
 
     protected override void OnUpdate()
     {
@@ -91,6 +103,9 @@ public partial class ApplyColliderSystem : SystemBase
         {
             return;
         }
+
+        // Получаем синглтон коллайдеров
+        var voxelChildColliderRegistrySingleton = SystemAPI.GetSingleton<VoxelChildColliderRegistrySingleton>();
 
         // Выделяем временные контейнеры Mono-кадра для передачи в метод ExecuteManagedMeshAllocation
         var chunksDataArray = new NativeList<NewChunkColliderData>(16, Allocator.Temp);
@@ -125,7 +140,7 @@ public partial class ApplyColliderSystem : SystemBase
                 LocalBounds = chunkColliderData.ValueRO.LocalBounds,
                 WorldBounds = chunkColliderData.ValueRO.WorldBounds,
                 SafeCounter = chunkColliderData.ValueRO.SafeCounter,
-                SafeColliderBlob = chunkColliderData.ValueRO.SafeColliderBlob,
+                //SafeColliderBlob = chunkColliderData.ValueRO.SafeColliderBlob,
 
             });
 
@@ -157,11 +172,12 @@ public partial class ApplyColliderSystem : SystemBase
         for (int i = 0; i < totalReadyCount; i++)
         {
             int3 finalCounts = chunksDataArray[i].SafeCounter[0];
-            if (finalCounts.x > 0 && chunksDataArray[i].SafeColliderBlob.IsCreated)
+            if (finalCounts.x > 0 && voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
             {
                 validCollidersCount++;
             }
         }
+
 
         BlobAssetReference<Unity.Physics.Collider> finalVehicleCompoundCollider = default;
 
@@ -173,11 +189,11 @@ public partial class ApplyColliderSystem : SystemBase
             for (int i = 0; i < totalReadyCount; i++)
             {
                 int3 finalCounts = chunksDataArray[i].SafeCounter[0];
-                if (finalCounts.x > 0 && chunksDataArray[i].SafeColliderBlob.IsCreated)
+                if (finalCounts.x > 0 && voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
                 {
                     compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
                     {
-                        Collider = chunksDataArray[i].SafeColliderBlob[0],
+                        Collider = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0], //chunksDataArray[i].SafeColliderBlob[0],
                         CompoundFromChild = new RigidTransform(quaternion.identity, childOffsetsList[i]),
                         Entity = chunksDataArray[i].TargetEntity
                     };
@@ -366,17 +382,16 @@ public partial class ApplyColliderSystem : SystemBase
         this.CheckedStateRef.Dependency.Complete();
 
         // 5. БЕЗОПАСНАЯ ОЧИСТКА НА ГЛАВНОМ ПОТОКЕ (Без структурных изменений!)
-        if (m_DisposeList.Length > 0)
+        if (voxelChildColliderRegistrySingleton.DisposeList.Length > 0)
         {
-            for (int i = 0; i < m_DisposeList.Length; i++)
+            for (int i = 0; i < voxelChildColliderRegistrySingleton.DisposeList.Length; i++)
             {
-                var blob = m_DisposeList[i];
-                if (blob.IsCreated)
+                if (voxelChildColliderRegistrySingleton.DisposeList[i].IsCreated)
                 {
-                    blob.Dispose(); // Здесь Unity Physics уже отпустила ссылку, краша не будет
+                    voxelChildColliderRegistrySingleton.DisposeList[i].Dispose(); // Здесь Unity Physics уже отпустила ссылку, краша не будет
                 }
             }
-            m_DisposeList.Clear(); // Обнуляем длину списка для следующего кадра
+            voxelChildColliderRegistrySingleton.DisposeList.Clear(); // Обнуляем длину списка для следующего кадра
         }
     }
 
@@ -391,6 +406,9 @@ public partial class ApplyColliderSystem : SystemBase
     {
         var isClient = state.WorldUnmanaged.IsClient();
         string textWorld = isClient ? "Client" : "Server";
+
+        // Получаем синглтон коллайдеров
+        var voxelChildColliderRegistrySingleton = SystemAPI.GetSingleton<VoxelChildColliderRegistrySingleton>();
 
         // Буфер команд
         //var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
@@ -423,7 +441,7 @@ public partial class ApplyColliderSystem : SystemBase
                     //}
 
                     // Потокобезопасно скидываем старый блоб в мусорку
-                    m_DisposeList.Add(oldGroup.ColliderBlob);
+                    voxelChildColliderRegistrySingleton.DisposeList.Add(oldGroup.ColliderBlob);
                 }
 
                 // Записываем новый сгенерированный коллайдер
@@ -431,7 +449,6 @@ public partial class ApplyColliderSystem : SystemBase
                 {
                     ColliderBlob = finalVehicleCompoundCollider
                 };
-
                 m_ColliderRegistry[rootVehicleEntity] = newGroup;
 
                 //// ====================================================================
@@ -562,17 +579,17 @@ public partial class ApplyColliderSystem : SystemBase
             // 2. Стираем буфер unmanaged-счетчиков
             if (chunkData.SafeCounter.IsCreated) chunkData.SafeCounter.Dispose();
 
-            // 3. Стираем С++ блоб меш-коллайдера и сам персональный массив
-            if (chunkData.SafeColliderBlob.IsCreated)
-            {
-                var chunkMeshColliderRef = chunkData.SafeColliderBlob[0];
-                if (chunkMeshColliderRef.IsCreated)
-                {
-                    chunkMeshColliderRef.Dispose();
-                }
-                chunkData.SafeColliderBlob.Dispose();
-            }
-            // ====================================================================
+            //// 3. Стираем С++ блоб меш-коллайдера и сам персональный массив
+            //if (chunkData.SafeColliderBlob.IsCreated)
+            //{
+            //    var chunkMeshColliderRef = chunkData.SafeColliderBlob[0];
+            //    if (chunkMeshColliderRef.IsCreated)
+            //    {
+            //        chunkMeshColliderRef.Dispose();
+            //    }
+            //    chunkData.SafeColliderBlob.Dispose();
+            //}
+            //// ====================================================================
         }
     }
 }

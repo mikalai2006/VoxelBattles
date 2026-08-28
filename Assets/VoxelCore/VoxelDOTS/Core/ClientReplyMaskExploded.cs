@@ -1,5 +1,6 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 public struct VisualsReplyMaskTag : IComponentData { }
 
 
@@ -14,7 +15,7 @@ public partial struct ClientHandleMaskReplySystem : ISystem
         // Ищем чанки, у которых уже есть буфер маски разрушений.
         m_ChunkQuery = state.GetEntityQuery(
             ComponentType.ReadOnly<VoxelModelHeader>(),
-            ComponentType.ReadOnly<NetworkParent>(),
+            ComponentType.ReadOnly<GhostInstance>(),
             ComponentType.ReadWrite<LocalChunkDestructionMask>()
         );
     }
@@ -26,21 +27,21 @@ public partial struct ClientHandleMaskReplySystem : ISystem
 
         // 1. Ищем сущность чанка на клиенте по его хэшу
         var chunkEntities = m_ChunkQuery.ToEntityArray(Allocator.Temp);
-        var chunkNames = m_ChunkQuery.ToComponentDataArray<NetworkParent>(Allocator.Temp);
+        var ghostInstanceComponents = m_ChunkQuery.ToComponentDataArray<GhostInstance>(Allocator.Temp);
 
         // Перебираем все пришедшие с сервера ответы
         foreach (var (replyData, rpcEntity) in SystemAPI.Query<ReplyMaskToClientRpc>().WithEntityAccess())
         {
-            uint replyHash = replyData.GhostInstance;
+            uint replyGhostId = replyData.GhostId;
 
             // Клонируем сжатые байты в локальную переменную (фикс CS1655)
             var compressedBytes = replyData.CompressedBytes;
 
             // Итерируемся по ВСЕМ чанкам в мире
-            for (int i = 0; i < chunkNames.Length; i++)
+            for (int i = 0; i < ghostInstanceComponents.Length; i++)
             {
                 // Находим КАЖДЫЙ чанк, у которого совпадает хэш
-                if (chunkNames[i].ParentGhostId == replyHash)
+                if (ghostInstanceComponents[i].ghostId == replyGhostId)
                 {
                     Entity foundChunkEntity = chunkEntities[i];
 
@@ -50,8 +51,10 @@ public partial struct ClientHandleMaskReplySystem : ISystem
                         var clientBuffer = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
 
                         // Распаковываем RLE в буфер этого чанка
-                        ChunkRleSerializer.DecompressFromRle(ref compressedBytes, clientBuffer.AsNativeArray());
-
+                        ChunkRleSerializer.DecompressFromRle(in compressedBytes, clientBuffer);
+#if UNITY_EDITOR
+                        UnityEngine.Debug.Log($"[Client]: Reply: Меняем маску разрушений для ghostId={ghostInstanceComponents[i].ghostId}[{replyGhostId}]!");
+#endif
                         // Помечаем этот конкретный чанк тегом для обновления меша/коллайдера
                         ecb.AddComponent<VisualsReplyMaskTag>(foundChunkEntity);
 
@@ -110,7 +113,7 @@ public partial struct ClientHandleMaskReplySystem : ISystem
 
         // Освобождаем временные массивы поиска чанка
         chunkEntities.Dispose();
-        chunkNames.Dispose();
+        ghostInstanceComponents.Dispose();
 
         // Применяем отложенные команды кадра
         ecb.Playback(state.EntityManager);

@@ -128,11 +128,18 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
 
             // 4. Локальный серверный буфер маски разрушений
             var maskBuffer = ecb.SetBuffer<LocalChunkDestructionMask>(chunkEntity);
-            maskBuffer.Clear();
+            // Мгновенно выделяем память под 512 элементов без оверхеда на Add()
+            maskBuffer.ResizeUninitialized(512);
+            // Быстрое заполнение памяти
             for (int m = 0; m < 512; m++)
             {
-                maskBuffer.Add(new LocalChunkDestructionMask { Value = 0xFFFFFFFFFFFFFFFFUL });
+                maskBuffer[m] = new LocalChunkDestructionMask { Value = 0xFFFFFFFFFFFFFFFFUL };
             }
+            //maskBuffer.Clear();
+            //for (int m = 0; m < 512; m++)
+            //{
+            //    maskBuffer.Add(new LocalChunkDestructionMask { Value = 0xFFFFFFFFFFFFFFFFUL });
+            //}
 
 
             // 5. Спавни чанки сразу активными и взводим тег рендеринга

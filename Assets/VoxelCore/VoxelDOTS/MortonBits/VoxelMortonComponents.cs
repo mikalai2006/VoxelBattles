@@ -1,4 +1,3 @@
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -43,21 +42,13 @@ public struct VoxelModelRootData : IComponentData
 
 // ПЕРЕИМЕНОВАНО: Чисто локальный unmanaged-буфер маски целостности чанка. 
 // Он НЕ реплицируется по сети, обеспечивая нулевой оверхед на сетевой спавн!
-[InternalBufferCapacity(512)]
+[InternalBufferCapacity(0)]
 public struct LocalChunkDestructionMask : IBufferElementData
 {
     //[GhostField(Quantization = 0)]
     public ulong Value;
 }
 
-public struct NetworkChunkRleUpdate : IRpcCommand
-{
-    // К какому именно чанку применить изменения
-    public Entity TargetChunkEntity;
-
-    // Сюда мы запишем последовательность пар [повторения, значение]
-    public FixedList512Bytes<byte> CompressedBytes;
-}
 
 // Рантайм-метаданные чанка для Presentation-конвейера
 //public struct ChunkIndexComponent : IComponentData { public int3 Value; }

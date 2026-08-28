@@ -378,6 +378,7 @@ public partial class ApplyColliderSystem : SystemBase
         //var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
         var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+        UnityEngine.Debug.LogWarning($"[{textWorld}]: Reload Collider for {rootVehicleEntity.Index}!");
 
         bool isColliderAssignedToEntity = false;
         try
@@ -412,14 +413,15 @@ public partial class ApplyColliderSystem : SystemBase
 
                 m_ColliderRegistry[rootVehicleEntity] = newGroup;
 
-                // ====================================================================
-                // ØÀÃ 2. ÎÁÍÓËßÅÌ ÑÂßÇÜ Ñ ÔÈÇÈÊÎÉ ÄËß ÑÒÀĞÎÃÎ ÊÎËËÀÉÄÅĞÀ
-                // ====================================================================
-                if (EntityManager.HasComponent<PhysicsCollider>(rootVehicleEntity))
-                {
-                    var currentColliderRef = SystemAPI.GetComponentRW<PhysicsCollider>(rootVehicleEntity);
-                    currentColliderRef.ValueRW.Value = default;
-                }
+
+                //// ====================================================================
+                //// ØÀÃ 2. ÎÁÍÓËßÅÌ ÑÂßÇÜ Ñ ÔÈÇÈÊÎÉ ÄËß ÑÒÀĞÎÃÎ ÊÎËËÀÉÄÅĞÀ
+                //// ====================================================================
+                //if (EntityManager.HasComponent<PhysicsCollider>(rootVehicleEntity))
+                //{
+                //    var currentColliderRef = SystemAPI.GetComponentRW<PhysicsCollider>(rootVehicleEntity);
+                //    currentColliderRef.ValueRW.Value = default;
+                //}
 
                 // 3. ÇÀÏÈÑÛÂÀÅÌ ÍÎÂÛÅ ÂÀËÈÄÍÛÅ ÄÀÍÍÛÅ
                 //state.EntityManager.SetComponentData(rootVehicleEntity, newCleanupData);

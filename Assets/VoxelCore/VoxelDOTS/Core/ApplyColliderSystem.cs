@@ -2,13 +2,9 @@ using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Physics;
-using Unity.Rendering;
-using UnityEngine;
-using UnityEngine.Rendering;
 
 public struct NewChunkColliderData // : IComponentData, IEnableableComponent
 {
@@ -39,8 +35,12 @@ public partial class ApplyColliderSystem : SystemBase
     // Нативный реестр: Сетевая Сущность -> Её текущий Blob-коллайдер
     private NativeParallelHashMap<Entity, VoxelColliderCleanupMarker> m_ColliderRegistry;
 
+    private NativeList<BlobAssetReference<Collider>> m_DisposeList;
+
     protected override void OnCreate()
     {
+        m_DisposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
+
         // Выделяем память один раз при старте игры. Настройки сети не затрагиваются.
         m_ColliderRegistry = new NativeParallelHashMap<Entity, VoxelColliderCleanupMarker>(128, Allocator.Persistent);
     }
@@ -64,6 +64,8 @@ public partial class ApplyColliderSystem : SystemBase
             // Уничтожаем саму карту
             m_ColliderRegistry.Dispose();
         }
+
+        if (m_DisposeList.IsCreated) m_DisposeList.Dispose();
 
         // Обязательно вызываем базовый метод уничтожения SystemBase!
         base.OnDestroy();
@@ -359,6 +361,23 @@ public partial class ApplyColliderSystem : SystemBase
             //}
 
         }
+
+        // Гарантируем, что джобы завершились перед тем, как мы начнем чистить память на главном потоке
+        this.CheckedStateRef.Dependency.Complete();
+
+        // 5. БЕЗОПАСНАЯ ОЧИСТКА НА ГЛАВНОМ ПОТОКЕ (Без структурных изменений!)
+        if (m_DisposeList.Length > 0)
+        {
+            for (int i = 0; i < m_DisposeList.Length; i++)
+            {
+                var blob = m_DisposeList[i];
+                if (blob.IsCreated)
+                {
+                    blob.Dispose(); // Здесь Unity Physics уже отпустила ссылку, краша не будет
+                }
+            }
+            m_DisposeList.Clear(); // Обнуляем длину списка для следующего кадра
+        }
     }
 
 
@@ -378,7 +397,6 @@ public partial class ApplyColliderSystem : SystemBase
         //var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
         var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
-        UnityEngine.Debug.LogWarning($"[{textWorld}]: Reload Collider for {rootVehicleEntity.Index}!");
 
         bool isColliderAssignedToEntity = false;
         try
@@ -399,10 +417,13 @@ public partial class ApplyColliderSystem : SystemBase
                 // Это происходит мгновенно на С++ уровне без структурных изменений!
                 if (m_ColliderRegistry.TryGetValue(rootVehicleEntity, out var oldGroup))
                 {
-                    if (oldGroup.ColliderBlob.IsCreated)
-                    {
-                        oldGroup.ColliderBlob.Dispose();
-                    }
+                    //if (oldGroup.ColliderBlob.IsCreated)
+                    //{
+                    //    oldGroup.ColliderBlob.Dispose();
+                    //}
+
+                    // Потокобезопасно скидываем старый блоб в мусорку
+                    m_DisposeList.Add(oldGroup.ColliderBlob);
                 }
 
                 // Записываем новый сгенерированный коллайдер
@@ -412,7 +433,6 @@ public partial class ApplyColliderSystem : SystemBase
                 };
 
                 m_ColliderRegistry[rootVehicleEntity] = newGroup;
-
 
                 //// ====================================================================
                 //// ШАГ 2. ОБНУЛЯЕМ СВЯЗЬ С ФИЗИКОЙ ДЛЯ СТАРОГО КОЛЛАЙДЕРА
@@ -528,13 +548,6 @@ public partial class ApplyColliderSystem : SystemBase
             }
         }
         // ====================================================================
-
-        var renderMeshDescription = new RenderMeshDescription
-        {
-            FilterSettings = new RenderFilterSettings { ShadowCastingMode = ShadowCastingMode.Off, ReceiveShadows = false, Layer = 0, RenderingLayerMask = 1, MotionMode = MotionVectorGenerationMode.Object, StaticShadowCaster = false },
-            LightProbeUsage = LightProbeUsage.Off
-        };
-
 
         // ====================================================================
         // ЭТАП 2: БЕЗОПАСНАЯ ФИКСАЦИЯ НА GPU И СБОРКА КОМПОНЕНТОВ BRG

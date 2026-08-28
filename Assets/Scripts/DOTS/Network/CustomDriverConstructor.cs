@@ -3,6 +3,7 @@ using Unity.NetCode;
 using Unity.Networking.Transport;
 using Unity.Networking.Transport.Utilities;
 
+[UnityEngine.Scripting.Preserve]
 public class CustomDriverConstructor : INetworkStreamDriverConstructor
 {
     public void CreateClientDriver(World world, ref NetworkDriverStore driverStore, NetDebug netDebug)
@@ -17,10 +18,10 @@ public class CustomDriverConstructor : INetworkStreamDriverConstructor
         // Для реального билда в сети интернет здесь можно выставлять от 20 до 30.
         uint targetDelay = 0;
 
-#if !UNITY_EDITOR
-        // Если это реальный билд для игры через интернет, включаем легкую склейку пакетов
-        targetDelay = 20; 
-#endif
+        //#if !UNITY_EDITOR
+        //        // Если это реальный билд для игры через интернет, включаем легкую склейку пакетов
+        //        targetDelay = 20; 
+        //#endif
 
         settings.WithNetworkSimulatorParameters(
             receivePacketLossPercent: 0f,
@@ -43,9 +44,9 @@ public class CustomDriverConstructor : INetworkStreamDriverConstructor
 
         uint targetDelay = 0;
 
-#if !UNITY_EDITOR
-        targetDelay = 20;
-#endif
+        //#if !UNITY_EDITOR
+        //        targetDelay = 20;
+        //#endif
 
         settings.WithNetworkSimulatorParameters(
             receivePacketLossPercent: 0f,

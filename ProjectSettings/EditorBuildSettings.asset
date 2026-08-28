@@ -6,9 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
     path: Assets/VoxelCore/VoxelDOTS/Test/DOTS_BEGIN_SCENE.unity
     guid: 38437f2166b99ac4e803397b0054957f
   m_configObjects:

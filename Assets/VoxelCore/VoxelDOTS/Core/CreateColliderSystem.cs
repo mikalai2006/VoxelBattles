@@ -5,21 +5,14 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Physics;
-using Unity.Rendering;
 using Unity.Transforms;
 
 public struct ChunkColliderNeedCreate : IComponentData, IEnableableComponent { }
-
 [ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
 public struct ChunkColliderData : IComponentData, IEnableableComponent
 {
-    //// Храним чистые, изолированные C++ массивы геометрии ТОЛЬКО этого чанка!
-    //public NativeArray<VoxelVertex> SafeVertices;
-    //public NativeArray<int> SafeIndices;
     public NativeArray<int3> SafeCounter;
     //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
-    //public NativeList<BakedBoxData> BakedBoxes;
-    //public BlobAssetReference<Collider> SafeColliderBlob;
 
     // Ссылка на хэндл джобы для точечной проверки готовности
     public JobHandle LastBakingJobHandle;
@@ -28,48 +21,43 @@ public struct ChunkColliderData : IComponentData, IEnableableComponent
     public float3 LocalOffsetWithPivot;
     public MinMaxAABB LocalBounds;
     public MinMaxAABB WorldBounds;
-    public bool HasGraphicsBefore;
     public int3 index;
     public bool isCreatedCollider;
 }
 
-//[UpdateInGroup(typeof(SimulationSystemGroup))]
-//[UpdateAfter(typeof(PredictedSimulationSystemGroup))]
-//[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
-//[UpdateInGroup(typeof(SimulationSystemGroup))]
-//[UpdateAfter(typeof(PredictedSimulationSystemGroup))]
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 [BurstCompile]
 public partial struct CreateColliderSystem : ISystem
 {
-    private ComponentLookup<ChunkColliderData> m_ChunkColliderDataLookup;
-
-    private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
-
     // Внутри объявления структуры вашей системы (ISystem):
-    ComponentLookup<Parent> m_ParentLookup;
-    ComponentLookup<Unity.NetCode.GhostInstance> m_GhostInstanceLookup;
+    private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
+    private ComponentLookup<ChunkColliderData> m_ChunkColliderDataLookup;
+    private BufferLookup<LocalChunkDestructionMask> m_MaskBufferLookup;
+    private ComponentLookup<Parent> m_ParentLookup;
+    private ComponentLookup<ChunkIndexComponent> m_ChunkIndexLookup;
+    private ComponentLookup<VoxelModelHeader> m_ModelHeaderLookup;
+    private ComponentLookup<GhostInstance> m_GhostInstanceLookup;
+    private ComponentLookup<LocalToWorld> m_LocalToWorldLookup;
+    private ComponentLookup<ChunkColliderNeedCreate> m_ChunkColliderNeedCreate;
 
-    private BufferTypeHandle<LocalChunkDestructionMask> m_MaskTypeHandle;
+    EntityQuery m_RebuildQuery;
 
     private NativeList<JobHandle> m_JobHandles;
-    //private NativeList<NewChunkGraphicsData> m_ChunksToInitialize;
-
-    //// 1. Объявляем приватные поля для кэширования запросов
-    //private EntityQuery m_ConfigQuery;
-    //private EntityQuery m_StorageQuery;
 
     //[BurstCompile(CompileSynchronously = true)]
     public void OnCreate(ref SystemState state)
     {
-        // Выделяем память под контейнеры
-        var registry = new NativeParallelHashMap<Entity, NativeArray<BlobAssetReference<Unity.Physics.Collider>>>(10000, Allocator.Persistent);
-        var disposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
+        state.RequireForUpdate<GlobalVoxelModelCache>();
+        state.RequireForUpdate<VoxelGlobalConfigComponent>();
 
         // Создаем сущность-синглтон и записываем туда ссылки
         if (state.World.IsClient() || state.World.IsServer())
         {
+            // Выделяем память под контейнеры
+            var registry = new NativeParallelHashMap<Entity, NativeArray<BlobAssetReference<Unity.Physics.Collider>>>(10000, Allocator.Persistent);
+            var disposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
+
             Entity singletonEntity = state.EntityManager.CreateEntity();
             state.EntityManager.AddComponentData(singletonEntity, new VoxelChildColliderRegistrySingleton
             {
@@ -78,24 +66,33 @@ public partial struct CreateColliderSystem : ISystem
             });
         }
 
-        state.RequireForUpdate<GlobalVoxelModelCache>();
-        state.RequireForUpdate<VoxelGlobalConfigComponent>();
-
-        m_MaskTypeHandle = state.GetBufferTypeHandle<LocalChunkDestructionMask>(true);
-
         m_JobHandles = new NativeList<JobHandle>(16, Allocator.Persistent);
-        //m_ChunksToInitialize = new NativeList<NewChunkGraphicsData>(16, Allocator.Persistent);
 
-        //// 2. Создаем запросы ОДИН РАЗ при инициализации системы
-        //m_ConfigQuery = state.GetEntityQuery(ComponentType.ReadOnly<VoxelGlobalConfigComponent>());
-        //m_StorageQuery = state.GetEntityQuery(ComponentType.ReadOnly<ClientVoxelMeshFrameStorage>());
-
-        m_ChunkColliderDataLookup = state.GetComponentLookup<ChunkColliderData>();
+        // Инициализируем лукапы при создании системы // true = ReadOnly
         m_ActiveStateLookup = state.GetComponentLookup<ChunkActiveState>();
+        m_ChunkColliderDataLookup = state.GetComponentLookup<ChunkColliderData>();
+        m_MaskBufferLookup = state.GetBufferLookup<LocalChunkDestructionMask>(true);
+        m_ParentLookup = state.GetComponentLookup<Parent>(true);
+        m_GhostInstanceLookup = state.GetComponentLookup<GhostInstance>(true);
+        m_ChunkIndexLookup = state.GetComponentLookup<ChunkIndexComponent>(true);
+        m_ModelHeaderLookup = state.GetComponentLookup<VoxelModelHeader>(true);
+        m_GhostInstanceLookup = state.GetComponentLookup<GhostInstance>(true);
+        m_LocalToWorldLookup = state.GetComponentLookup<LocalToWorld>(true);
+        m_ChunkColliderNeedCreate = state.GetComponentLookup<ChunkColliderNeedCreate>(false);
 
-        // Инициализируем лукапы при создании системы
-        m_ParentLookup = state.GetComponentLookup<Parent>(true); // true = ReadOnly
-        m_GhostInstanceLookup = state.GetComponentLookup<Unity.NetCode.GhostInstance>(true);
+        // ====================================================================
+        // ИСПРАВЛЕНИЕ 1: Использование кэшированного EntityQuery (O(1) скорость)
+        // Предполагается, что m_RebuildQuery инициализирован в OnCreate:
+        using (var builder = new EntityQueryBuilder(Allocator.Temp)
+        .WithAll<LocalChunkDestructionMask>() // Билдер сам определит, что это буфер!
+        .WithAll<ChunkIndexComponent>()
+        .WithAll<VoxelModelHeader>()
+        .WithAll<GhostInstance>()
+        .WithAll<ChunkColliderNeedCreate>())
+        {
+            m_RebuildQuery = state.GetEntityQuery(builder);
+        }
+        // ====================================================================
     }
 
     [BurstCompile(CompileSynchronously = true)]
@@ -155,126 +152,94 @@ public partial struct CreateColliderSystem : ISystem
         var networkTime = SystemAPI.GetSingleton<NetworkTime>();
         NetworkTick currentTick = networkTime.ServerTick;
 
-        // Получаем синглтон коллайдеров для текущего кадра
         var voxelChildColliderRegistrySingleton = SystemAPI.GetSingleton<VoxelChildColliderRegistrySingleton>();
-
-        //// Свойство IsFirstTimePredictedTick сообщает, что Netcode сейчас выполняет 
-        //// "свежий" кадр, а не прокручивает историю тиков назад для ресимуляции.
-        //// Если это повторный тик перемотки — мы мгновенно выходим и не дублируем код!
-        //if (!networkTime.IsFinalPredictionTick)
-        //{
-        //    return;
-        //}
-
-        m_ChunkColliderDataLookup.Update(ref state);
-        m_ActiveStateLookup.Update(ref state);
-        m_ParentLookup.Update(ref state);
-        m_GhostInstanceLookup.Update(ref state);
-
-        // Буфер команд
-        //var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-        //var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
-
         var cache = SystemAPI.GetSingleton<GlobalVoxelModelCache>();
 
-        m_MaskTypeHandle.Update(ref state);
-        uint lastSystemVersion = state.LastSystemVersion;
+        // Лукапы состояний обновляем
+        m_ActiveStateLookup.Update(ref state);
+        m_ChunkColliderDataLookup.Update(ref state);
+        m_MaskBufferLookup.Update(ref state);
+        m_ParentLookup.Update(ref state);
+        m_GhostInstanceLookup.Update(ref state);
+        m_ChunkIndexLookup.Update(ref state);
+        m_ModelHeaderLookup.Update(ref state);
+        m_GhostInstanceLookup.Update(ref state);
+        m_LocalToWorldLookup.Update(ref state);
+        m_ChunkColliderNeedCreate.Update(ref state);
+
+        // Высокоскоростной Burst-заменитель для EntityManager.Exists
+        var entityStorageInfoLookup = state.GetEntityStorageInfoLookup();
 
         m_JobHandles.Clear();
-        //m_ChunksToInitialize.Clear();
 
         // Считаем точное число чанков на перестроение в текущем кадре
-        int totalChunksToRebuild = 0;
-        foreach (var (maskBuffer, chunkIndex, modelHeader, entity) in SystemAPI.Query<
-            DynamicBuffer<LocalChunkDestructionMask>,
-            RefRO<ChunkIndexComponent>,
-            RefRO<VoxelModelHeader>
-          >()
-            .WithAll<ChunkColliderNeedCreate>()
-            .WithEntityAccess())
-        {
-            totalChunksToRebuild++;
-        }
+        //int totalChunksToRebuild = 0;
+        //foreach (var (maskBuffer, chunkIndex, modelHeader, entity) in SystemAPI.Query<
+        //    DynamicBuffer<LocalChunkDestructionMask>,
+        //    RefRO<ChunkIndexComponent>,
+        //    RefRO<VoxelModelHeader>
+        //  >()
+        //    .WithAll<ChunkColliderNeedCreate>()
+        //    .WithEntityAccess())
+        //{
+        //    totalChunksToRebuild++;
+        //}
+        //if (totalChunksToRebuild == 0) return;
+        //var childOffsetsArray = new NativeArray<float3>(totalChunksToRebuild, Allocator.Persistent);
 
+        //int jobIndex = 0;
+
+        int totalChunksToRebuild = m_RebuildQuery.CalculateEntityCount();
         if (totalChunksToRebuild == 0) return;
 
-        // ====================================================================
-        // ЧИСТЫЙ AAA SAFE ПАЙПЛАЙН: Выделяем ТОЛЬКО три этих массива!
-        // Старый childCollidersList КАТЕГОРИЧЕСКИ УДАЛЕН со строки 79!
-        // ====================================================================
+        // Безопасно собираем сущности в плоский нативный массив.
+        // Никакие переключения JobHandle и деструкции больше не сломают итерацию!
+        var entitiesToProcess = m_RebuildQuery.ToEntityArray(Allocator.TempJob);
+
         var childOffsetsArray = new NativeArray<float3>(totalChunksToRebuild, Allocator.Persistent);
-        // ====================================================================
-
-
         int jobIndex = 0;
-
-
-
-        //// ====================================================================
-        //// ФАЗА Б: ЗАПУСК НОВЫХ РАЗРУШЕНИЙ ИЛИ СПАВНОВ ЧАНКОВ
-        //// ЖЕЛЕЗОБЕТОННЫЙ SAFE-ФИКС ДЛЯ PresentationSystemGroup:
-        //// Мы КАТЕГОРИЧЕСКИ стерли отсюда GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()!
-        //// Создаем чистый, изолированный unmanaged буфер команд на аллокаторе TempJob.
-        //// Ошибка "EntityCommandBuffer has been deallocated" исчезнет навсегда!
-        //// ====================================================================
-        ////var ecb = new EntityCommandBuffer(Allocator.TempJob);
-        //var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-        //var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
-        //// ====================================================================
+        JobHandle loopDependency = state.Dependency;
 
         // ====================================================================
         // ЭТАП 1 (BURST): АСИНХРОННЫЙ ПРОЛЕТ ПО ВСЕМ ИЗМЕНИВШИМСЯ ЧАНКАМ
         // ====================================================================
-        foreach (var (maskBuffer, chunkIndex, modelHeader, ghostInstance, entity) in SystemAPI.Query<
-                DynamicBuffer<LocalChunkDestructionMask>,
-                RefRO<ChunkIndexComponent>,
-                RefRO<VoxelModelHeader>,
-                RefRO<GhostInstance>
-            >()
-            .WithAll<ChunkColliderNeedCreate>()
-             //.WithDisabled<ChunkColliderData>()
-             //.WithDisabled<ChunkActiveState>()
-             .WithEntityAccess())
+        //foreach (var (maskBuffer, chunkIndex, modelHeader, ghostInstance, entity) in SystemAPI.Query<
+        //        DynamicBuffer<LocalChunkDestructionMask>,
+        //        RefRO<ChunkIndexComponent>,
+        //        RefRO<VoxelModelHeader>,
+        //        RefRO<GhostInstance>
+        //    >()
+        //    .WithAll<ChunkColliderNeedCreate>()
+        //     //.WithDisabled<ChunkColliderData>()
+        //     //.WithDisabled<ChunkActiveState>()
+        //     .WithEntityAccess())
+        //{
+        for (int i = 0; i < entitiesToProcess.Length; i++)
         {
-            // ====================================================================
-            // ЖЕЛЕЗОБЕТОННЫЙ СЕТЕВОЙ ПРЕДОХРАНИТЕЛЬ:
-            // Если Netcode на этом кадре уже пометил чанк на удаление — 
-            // КАТЕГОРИЧЕСКИ пропускаем его и не трогаем память!
-            // ====================================================================
-            if (!state.EntityManager.Exists(entity)) continue;
+            Entity entity = entitiesToProcess[i];
+
+            //if (!state.EntityManager.Exists(entity)) continue;
+            if (!entityStorageInfoLookup.Exists(entity)) continue;
 
             Entity rootVehicleEntity = Entity.Null;
 
-            // ====================================================================
             // Получаем корень автомобиля (предполагаем, что у вас есть компонент родителя, например Parent)
             if (m_ParentLookup.HasComponent(entity))
             {
-                //rootVehicleEntity = state.EntityManager.GetComponentData<Parent>(entity).Value;
                 rootVehicleEntity = m_ParentLookup[entity].Value;
             }
             if (rootVehicleEntity == Entity.Null) continue;
-            //==========================================
 
             if (!m_GhostInstanceLookup.HasComponent(rootVehicleEntity)) continue;
 
-            //var ghostInstanceRoot = m_GhostInstanceLookup[rootVehicleEntity];
-            //NetworkTick spawnTick = ghostInstanceRoot.spawnTick;
+            // Извлекаем данные чанка напрямую через высокоскоростной Lookup
+            var maskBuffer = m_MaskBufferLookup[entity];
+            var chunkIndex = m_ChunkIndexLookup[entity];
+            var modelHeader = m_ModelHeaderLookup[entity];
+            var ghostInstance = m_GhostInstanceLookup[rootVehicleEntity];
 
-            //// Проверяем валидность обоих тиков
-            //if (currentTick.IsValid && spawnTick.IsValid)
-            //{
-            //    uint currentTickIdx = currentTick.TickIndexForValidTick;
-            //    uint spawnTickIdx = spawnTick.TickIndexForValidTick;
-            //    uint ticksPassed = currentTickIdx - spawnTickIdx;
-
-            //    // Если машина слишком молодая — отправляем чанк на карантин
-            //    if (ticksPassed >= 0u && ticksPassed < 4u)
-            //    {
-            //        continue; // Чистый пропуск итерации!
-            //    }
-            //}
             // Извлекаем тик спавна САМОГО ЧАНКА из переменной итератора query
-            NetworkTick chunkSpawnTick = ghostInstance.ValueRO.spawnTick;
+            NetworkTick chunkSpawnTick = ghostInstance.spawnTick;
 
             if (currentTick.IsValid && chunkSpawnTick.IsValid)
             {
@@ -289,65 +254,32 @@ public partial struct CreateColliderSystem : ISystem
                 }
             }
 
-            // ====================================================================
-            // ОФИЦИАЛЬНЫЙ СЕТЕВОЙ Safe-ПРЕДOХРАНИТЕЛЬ (Канон Unity Netcode):
-            // Мы извлекаем компонент GhostInstance. Если этот чанк родился прямо 
-            // на текущем кадре симуляции — мы КАТЕГОРИЧЕСКИ пропускаем его!
-            // Даем С++ ядру GhostReceiveSystem спокойно стабилизировать и настроить 
-            // Ghost Map без фоновых блокировок воркеров CPU.
-            // На следующем кадре чанк станет "взрослым", воркеры асинхронно допекут 
-            // его без единого краха, а фриз и ошибка полностью ИСЧЕЗНУТ при любом спавне!
-            // ====================================================================
             // Проверяем сетевой статус госта через встроенные unmanaged-флаги Netcode
-            if (ghostInstance.ValueRO.ghostId <= 0) // Или простая проверка на возраст тика кадра
+            if (ghostInstance.ghostId <= 0) // Или простая проверка на возраст тика кадра
             {
                 // Самый надежный Safe-вариант для Burst: если гост только что заспавнился на клиенте, 
                 // даем ему 1 кадр на сетевую акклиматизацию
                 continue;
             }
 
-            ArchetypeChunk chunk = state.EntityManager.GetChunk(entity);
-            uint chunkMaskVersion = chunk.GetChangeVersion(ref m_MaskTypeHandle);
-
-            bool hasGraphics = state.EntityManager.HasComponent<MaterialMeshInfo>(entity);
-            bool isMaskChanged = ChangeVersionUtility.DidChange(chunkMaskVersion, lastSystemVersion);
-
-            if (hasGraphics && !isMaskChanged) continue;
-
-            uint modelHash = modelHeader.ValueRO.ConfigHashName;
+            uint modelHash = modelHeader.ConfigHashName;
             if (modelHash == 0) continue;
 
             if (!cache.Templates.TryGetValue(modelHash, out var template)) continue;
-            if (!template.ChunkCoordToOrderIndexMap.TryGetValue(chunkIndex.ValueRO.Value, out int chunkOrderIndex)) continue;
+            if (!template.ChunkCoordToOrderIndexMap.TryGetValue(chunkIndex.Value, out int chunkOrderIndex)) continue;
 
             int chunkOffset = chunkOrderIndex * 32768;
 
-            // ====================================================================
-            // КРИТИЧЕСКИЙ ПРЕДОХРАНИТЕЛЬ: МГНОВЕННАЯ БЛОКИРОВКА ЧАНКА!
-            // Включаем ChunkActiveState прямо здесь, на месте! 
-            // state.EntityManager.SetComponentEnabled — это НЕ структурное изменение!
-            // Оно легально работает внутри foreach и мгновенно выкидывает чанк из 
-            // этого запроса на все следующие кадры, пока джобы не завершатся!
-            // ====================================================================
-            //state.EntityManager.SetComponentEnabled<ChunkActiveState>(entity, true);
-            //m_ActiveStateLookup.SetComponentEnabled(entity, true);
-            state.EntityManager.SetComponentEnabled<ChunkColliderNeedCreate>(entity, false);
-            // ====================================================================
+            // МГНОВЕННАЯ БЛОКИРОВКА ЧАНКА!
 
-            //// Выделяем раздельные unmanaged safe-буферы для джобы в Persistent куче кадра
-            //var tempVertices = new NativeArray<VoxelVertex>(16384, Allocator.Persistent, NativeArrayOptions.ClearMemory);
-            //var tempIndices = new NativeArray<int>(24576, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            //m_ChunkColliderNeedCreate.SetComponentEnabled(entity, false);
+            SystemAPI.SetComponentEnabled<ChunkColliderNeedCreate>(entity, false);
 
             var singleChunkCounter = new NativeArray<int3>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
 
-            //==============Physics====================
-            // НА 100% СЕЙФОВЫЙ МАНЕВР: Персональный мини-массив коллайдера для КАЖДОГО чанка!
-            // Никаких GetSubArray и общих ссылок. Полная изоляция памяти.
-            // ====================================================================
+            // Выделяем массив для блоба коллайдера
             var singleChunkColliderBlob = new NativeArray<BlobAssetReference<Unity.Physics.Collider>>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
-            // ====================================================================
 
-            //UnityEngine.Debug.LogWarning($"template.FlattenedLinearColors.lenght={template.FlattenedLinearColors.Length}");
             // 2. Планируем джобу выпекания MeshCollider для этого чанка
             var colliderJob = new GenerateChunkColliderJob
             {
@@ -357,25 +289,15 @@ public partial struct CreateColliderSystem : ISystem
                 FlattenedModelColors = template.FlattenedLinearColors,
                 ChunkOffsetInFlattenedArray = chunkOffset,
             };
-            //var colliderJob = new PhysicsGreedyJobSafeDirect
-            //{
-            //    LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
-            //    OutputColliderBlob = singleChunkColliderBlob,
-            //    ChunkOffsetInFlattenedArray = chunkOffset,
-            //    FlattenedModelColors = template.FlattenedLinearColors,
-            //};
 
             JobHandle chunkColliderHandle = colliderJob.Schedule(state.Dependency);
 
             m_JobHandles.Add(chunkColliderHandle);
 
             // 1. Вычисляем исходное локальное смещение чанка (размер чанка 32 вокселя)
-            float3 baseLocalOffset = (float3)chunkIndex.ValueRO.Value * 32f * 1.0f;
+            float3 baseLocalOffset = (float3)chunkIndex.Value * 32f * 1.0f;
 
-            // ====================================================================
-            // ЖЕЛЕЗОБЕТОННЫЙ ФИКС ПИВОТА ДЛЯ ФИЗИКИ:
-            // Вычисляем точно такой же pivotOffset, как и в спавнере чанков!
-            // Замените modelSizeInChunks на реальные габариты вашей модели в чанках.
+            // Пивот
             float3 pivotOffset = new float3(
                 (template.SizeModel.x * 32f) / 2f,
                 0f, // Оставляем 0, чтобы физическое дно машины совпало с пивотом (0,5,0)
@@ -387,19 +309,8 @@ public partial struct CreateColliderSystem : ISystem
 
             // Записываем СМЕЩЕННЫЙ оффсет в массив для генерации CompoundCollider
             childOffsetsArray[jobIndex] = localOffsetWithPivot;
-            // ====================================================================
 
-
-            //// Считаем Bounds через чистый unmanaged AABB.Transform без managed-вызовов
-            //var aabbLocal = new Unity.Mathematics.AABB { Center = new float3(16f, 16f, 16f), Extents = new float3(16f, 16f, 16f) };
-            //var aabbWorld = aabbLocal;
-            //if (state.EntityManager.HasComponent<LocalToWorld>(entity))
-            //{
-            //    var ltw = state.EntityManager.GetComponentData<LocalToWorld>(entity);
-            //    aabbWorld = Unity.Mathematics.AABB.Transform(ltw.Value, aabbLocal);
-            //}
             // 2. СЧИТАЕМ BOUNDS С УЧЕТОМ НОВОГО ЛОКАЛЬНОГО ПОЛОЖЕНИЯ
-            // Локальный центр чанка в пространстве машины теперь равен: смещенный оффсет чанка + центр самого чанка (16,16,16)
             float3 correctedChunkCenterInVehicleSpace = localOffsetWithPivot + new float3(16f, 16f, 16f);
 
             var aabbLocal = new Unity.Mathematics.AABB
@@ -411,19 +322,13 @@ public partial struct CreateColliderSystem : ISystem
             var aabbWorld = aabbLocal;
 
             // Если у машины (а не у чанка!) есть LocalToWorld, трансформируем локальный AABB в мировой
-            if (state.EntityManager.HasComponent<LocalToWorld>(rootVehicleEntity))
+            if (m_LocalToWorldLookup.HasComponent(rootVehicleEntity))
             {
-                var parentLtw = state.EntityManager.GetComponentData<LocalToWorld>(rootVehicleEntity);
+                var parentLtw = m_LocalToWorldLookup[rootVehicleEntity];// state.EntityManager.GetComponentData<LocalToWorld>(rootVehicleEntity);
                 aabbWorld = Unity.Mathematics.AABB.Transform(parentLtw.Value, aabbLocal);
             }
 
-
-            // ====================================================================
             // БЕЗОПАСНАЯ РЕГИСТРАЦИЯ НА СУЩНОСТИ ЧАНКА:
-            // Откладываем добавление компонента-маркера выгрузки графики в ECB.
-            // OnUpdate завершается мгновенно, оставаясь на 100% BurstCompile-чистым!
-            // ====================================================================
-            // Теперь мы со спокойной душой перезаписываем маркер свежими массивами текущего кадра!
             m_ChunkColliderDataLookup[entity] = new ChunkColliderData
             {
                 LastBakingJobHandle = chunkColliderHandle,
@@ -433,31 +338,22 @@ public partial struct CreateColliderSystem : ISystem
                 LocalOffsetWithPivot = localOffsetWithPivot,
                 LocalBounds = new MinMaxAABB { Min = aabbLocal.Min, Max = aabbLocal.Max },
                 WorldBounds = new MinMaxAABB { Min = aabbWorld.Min, Max = aabbWorld.Max },
-                HasGraphicsBefore = hasGraphics,
-                index = chunkIndex.ValueRO.Value
+                //HasGraphicsBefore = hasGraphics,
+                index = chunkIndex.Value
             };
-
 
             if (voxelChildColliderRegistrySingleton.Registry.TryGetValue(entity, out var oldBlob))
             {
-                //// Потокобезопасно скидываем старый блоб в мусорку
-                //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
-                // 1. Проверяем, что массив вообще был создан (защита от ошибок)
                 if (oldBlob.IsCreated)
                 {
-                    // 2. Отправляем сам физический Blob-коллайдер, лежащий внутри массива, в мусорку
-                    // (Очистку самого блоба система выполнит в конце кадра на главном потоке)
                     //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
-                    for (int i = 0; i < oldBlob.Length; i++)
+                    for (int x = 0; x < oldBlob.Length; x++)
                     {
-                        if (oldBlob[i].IsCreated)
+                        if (oldBlob[x].IsCreated)
                         {
-                            oldBlob[i].Dispose();
+                            oldBlob[x].Dispose();
                         }
                     }
-
-                    // 3. ИСПРАВЛЕНИЕ УТЕЧКИ: Полностью уничтожаем сам контейнер старого NativeArray.
-                    // Это освободит память, выделенную под массив на 1 элемент в прошлом кадре.
                     oldBlob.Dispose();
                 }
 
@@ -465,24 +361,12 @@ public partial struct CreateColliderSystem : ISystem
             // добавляем коллайдер чанка
             voxelChildColliderRegistrySingleton.Registry[entity] = singleChunkColliderBlob;
 
-            //var isClient = state.WorldUnmanaged.IsClient();
-            //string textWorld = isClient ? "Client" : "Server";
-
-            //UnityEngine.Debug.Log($"[{textWorld}] Добавление ChunkGraphicsFlushTag для {chunkIndex.ValueRO.Value}");
-
-            //// Если маркер уже был — обновляем его структуру атомарно, если нет — добавляем
-            //if (state.EntityManager.HasComponent<ChunkGraphicsFlushTag>(entity))
-            //{
-            //    ecb.SetComponent(entity, finalFlushComponent);
-            //}
-            //else
-            //{
-            //    ecb.AddComponent(entity, finalFlushComponent);
-            //}
             m_ChunkColliderDataLookup.SetComponentEnabled(entity, true);
 
             jobIndex++;
         }
+
+        entitiesToProcess.Dispose();
 
         if (childOffsetsArray.IsCreated) childOffsetsArray.Dispose();
 
@@ -491,15 +375,8 @@ public partial struct CreateColliderSystem : ISystem
         {
             // Если в этом кадре разрушений не было — просто сбрасываем список
             m_JobHandles.Clear();
-
-            // Чистим пустую записную книжку кадра, чтобы не было утечек памяти
-            //if (ecb.IsCreated) ecb.Dispose();
             return;
         }
-
-        // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
-        if (m_JobHandles.Length == 0) return;
-
 
         // ====================================================================
         // Объединяем хэндлы асинхронного выпекания ВСЕХ индивидуальных чанков.

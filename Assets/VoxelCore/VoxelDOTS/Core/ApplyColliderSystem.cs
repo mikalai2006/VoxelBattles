@@ -6,7 +6,7 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Physics;
 
-public struct NewChunkColliderData // : IComponentData, IEnableableComponent
+public struct NewChunkColliderData
 {
     public Entity TargetEntity;
     //public int JobIndex;
@@ -14,7 +14,7 @@ public struct NewChunkColliderData // : IComponentData, IEnableableComponent
     public MinMaxAABB WorldBounds;
 
     // ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
-    public NativeArray<int3> SafeCounter;
+    public NativeArray<int3> SafeStatus; // z - 1-джоба выполнена
 
     //// МЕНЯЕМ ТИП: Сюда мы сохраним индивидуальный нативный массив чанка
     //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
@@ -64,19 +64,6 @@ public partial class ApplyColliderSystem : SystemBase
             // Уничтожаем саму карту
             m_ColliderRegistry.Dispose();
         }
-        //if (m_DisposeList.IsCreated)
-        //{
-        //    for (int i = 0; i < m_DisposeList.Length; i++)
-        //    {
-        //        if (m_DisposeList[i].IsCreated)
-        //        {
-        //            m_DisposeList[i].Dispose(); // Принудительно выгружаем каждый компаунд
-        //        }
-        //    }
-
-        //    // Уничтожаем саму карту
-        //    m_DisposeList.Dispose();
-        //}
 
         // Обязательно вызываем базовый метод уничтожения SystemBase!
         base.OnDestroy();
@@ -139,7 +126,7 @@ public partial class ApplyColliderSystem : SystemBase
                 TargetEntity = chunkEntity,
                 LocalBounds = chunkColliderData.ValueRO.LocalBounds,
                 WorldBounds = chunkColliderData.ValueRO.WorldBounds,
-                SafeCounter = chunkColliderData.ValueRO.SafeCounter,
+                SafeStatus = chunkColliderData.ValueRO.SafeCounter,
                 //SafeColliderBlob = chunkColliderData.ValueRO.SafeColliderBlob,
 
             });
@@ -171,7 +158,7 @@ public partial class ApplyColliderSystem : SystemBase
 
         for (int i = 0; i < totalReadyCount; i++)
         {
-            int3 finalCounts = chunksDataArray[i].SafeCounter[0];
+            int3 finalCounts = chunksDataArray[i].SafeStatus[0];
             if (finalCounts.x > 0 && voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
             {
                 validCollidersCount++;
@@ -188,7 +175,7 @@ public partial class ApplyColliderSystem : SystemBase
 
             for (int i = 0; i < totalReadyCount; i++)
             {
-                int3 finalCounts = chunksDataArray[i].SafeCounter[0];
+                int3 finalCounts = chunksDataArray[i].SafeStatus[0];
                 if (finalCounts.x > 0 && voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
                 {
                     compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
@@ -209,55 +196,8 @@ public partial class ApplyColliderSystem : SystemBase
             compoundInstances.Dispose();
         }
 
-
-        //// ====================================================================
-        //// ОБЪЕДИНЕННЫЙ ШАГ 3: МГНОВЕННАЯ УТИЛИЗАЦИЯ И СБРОС ДАННЫХ ЧАНКОВ
-        //// Чистим С++ кучу и обнуляем оригиналы на сущностях в один проход
-        //// ====================================================================
-        //for (int i = 0; i < chunksDataArray.Length; i++)
-        //{
-        //    Entity chunkEntity = chunksDataArray[i].TargetEntity;
-
-        //    if (EntityManager.HasComponent<ChunkGraphicsFlushTag>(chunkEntity))
-        //    {
-        //        // 1. Получаем ИСТИННУЮ ссылку на компонент внутри чанка памяти ECS.
-        //        // Ключевое слово ref здесь КРИТИЧЕСКИ важно!
-        //        ref var originalFlushTag = ref SystemAPI.GetComponentRW<ChunkGraphicsFlushTag>(chunkEntity).ValueRW;
-
-        //        // 2. Уничтожаем нативный С++ BlobAsset меш-коллайдера чанка
-        //        if (originalFlushTag.SafeColliderBlob.IsCreated)
-        //        {
-        //            var chunkMeshColliderRef = originalFlushTag.SafeColliderBlob[0];
-        //            if (chunkMeshColliderRef.IsCreated)
-        //            {
-        //                chunkMeshColliderRef.Dispose(); // Удалили физическое BVH-дерево чанка из C++
-        //            }
-
-        //            // 3. Уничтожаем сам оригинальный Persistent-массив
-        //            originalFlushTag.SafeColliderBlob.Dispose(); // Стираем контейнер
-        //        }
-
-        //        // ====================================================================
-        //        // КЛЮЧЕВОЙ ШАГ: Поскольку мы работаем через ref и ValueRW, 
-        //        // эти обнуления запишутся СТРОГО в оригинальную память сущности!
-        //        // ====================================================================
-        //        originalFlushTag.SafeColliderBlob = default;
-        //        originalFlushTag.SafeVertices = default;
-        //        originalFlushTag.SafeIndices = default;
-        //        originalFlushTag.SafeCounter = default;
-        //    }
-        //}
-
         childOffsetsList.Dispose();
 
-        // ====================================================================
-        // ФАЗА 4: ЗАПУСК ВАШЕГО СУЩЕСТВУЮЩЕГО МЕТОДА ВЫГРУЗКИ ГРАФИКИ НА GPU
-        // Копирует вершины через GetSubArray() и регистрирует BatchMeshID
-        // ====================================================================
-        // ====================================================================
-        // БРОНИРОВАННЫЙ AAA-ПРЕДOХРАНИТЕЛЬ СИСТЕМЫ (Safe Идеал)
-        // Обворачиваем вызов твоего метода в блок try!
-        // ====================================================================
         try
         {
             ExecuteManagedCollider(
@@ -267,115 +207,19 @@ public partial class ApplyColliderSystem : SystemBase
                 finalVehicleCompoundCollider
             );
         }
-        // ====================================================================
-        // ЗАКРЫВАЕМ КАПКАН УТИЛИЗАЦИИ В БЛОКЕ FINALLY:
-        // Что бы ни произошло внутри ExecuteManagedMeshAllocation — этот блок 
-        // выполнится ЖЕЛЕЗНО! Системные утечки RewindableAllocator и краши 
-        // ObjectDisposedException будут уничтожены раз и навсегда!
-        // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
-        // ====================================================================
         finally
         {
-            // ====================================================================
-            // ФАЗА 5: ТОТАЛЬНАЯ УТИЛИЗАЦИЯ И СТИРАНИЕ ПАМЯТИ ЧАНКОВ (Safe Финал)
-            // Полигоны улетели на GPU. Теперь мы ОДИН РАЗ за сессию кадра чисто удаляем
-            // unmanaged-массивы геометрии чанков, полностью предотвращая утечки ОЗУ!
-            // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
-            // ====================================================================
-            //var ecb = new EntityCommandBuffer(Allocator.Temp);
-
-            //for (int i = 0; i < totalReadyCount; i++)
-            //{
-            //    Entity chunkEntity = chunksDataArray[i].TargetEntity;
-
-            //    // Намертво вырезаем C++ массивы из Persistent-кучи памяти ОЗУ компьютера
-            //    if (chunksDataArray[i].SafeVertices.IsCreated) chunksDataArray[i].SafeVertices.Dispose();
-            //    if (chunksDataArray[i].SafeIndices.IsCreated) chunksDataArray[i].SafeIndices.Dispose();
-            //    if (chunksDataArray[i].SafeCounter.IsCreated) chunksDataArray[i].SafeCounter.Dispose();
-            //    if (chunksDataArray[i].SafeColliderBlob.IsCreated) chunksDataArray[i].SafeColliderBlob.Dispose();
-
-            //    // Безопасно снимаем маркер готовности и открываем чанк для будущих сетевых разрушений
-            //    ecb.RemoveComponent<ChunkGraphicsFlushTag>(chunkEntity);
-
-            //    // Снимаем блок повторного планирования Burst-системы, возвращая чанк в общий пул игры!
-            //    ecb.SetComponentEnabled<ChunkActiveState>(chunkEntity, false);
-            //}
-
-            //chunksDataArray.Dispose();
-            //ecb.Playback(EntityManager);
-            //ecb.Dispose();
-            // ====================================================================
-            // ФАЗА 5: ИСПРАВЛЕННАЯ AAA-УТИЛИЗАЦИЯ И СТИРАНИЕ ПАМЯТИ ЧАНКОВ (Safe)
-            // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
-            // ====================================================================
-            //var ecb = new EntityCommandBuffer(Allocator.Temp);
-
             for (int i = 0; i < totalReadyCount; i++)
             {
                 Entity chunkEntity = chunksDataArray[i].TargetEntity;
 
                 if (EntityManager.Exists(chunkEntity))
                 {
-                    //// Намертво вырезаем C++ массивы геометрии чанка из Persistent-кучи памяти
-                    //if (chunksDataArray[i].SafeVertices.IsCreated) chunksDataArray[i].SafeVertices.Dispose();
-                    //if (chunksDataArray[i].SafeIndices.IsCreated) chunksDataArray[i].SafeIndices.Dispose();
-                    //if (chunksDataArray[i].SafeCounter.IsCreated) chunksDataArray[i].SafeCounter.Dispose();
-                    //if (chunksDataArray[i].SafeColliderBlob.IsCreated) chunksDataArray[i].SafeColliderBlob.Dispose();
-
-                    // Снимаем маркер выгрузки графики с сущности чанка
-                    //ecb.RemoveComponent<ChunkGraphicsFlushTag>(chunkEntity);
-                    // ====================================================================
-
-                    // АБСОЛЮТНО АСИНХРОННЫЙ ФИНАЛ КАДРА:
-                    // Просто гасим стейты компонентов. 0% Structural Changes, 0% фризов,
-                    // и полная безопасность для карты гостов Netcode!
-                    // ====================================================================
-                    //EntityManager.SetComponentEnabled<ChunkActiveState>(chunkEntity, false);
                     EntityManager.SetComponentEnabled<ChunkColliderData>(chunkEntity, false); // Выключили до следующего взрыва!
-
-                    //// Возвращаем чанк в общий пул симуляции игры
-                    //ecb.SetComponentEnabled<ChunkActiveState>(chunkEntity, false);
                 }
             }
 
-            // Чистим передаточный список кадра
             chunksDataArray.Dispose();
-            //// Воспроизводим и чисто уничтожаем буфер команд, закрывая системный лик!
-            //ecb.Playback(EntityManager);
-            //ecb.Dispose();
-
-            //// ====================================================================
-            //// ПЕРИОДИЧЕСКАЯ ОЧИСТКА УНИЧТОЖЕННЫХ В ИГРЕ МАШИН
-            //// ====================================================================
-            //if (!m_ColliderRegistry.IsEmpty)
-            //{
-            //    // Заменяем Allocator.TempJob на Allocator.Temp. 
-            //    // Память Temp живет ровно 1 кадр и уничтожается С++ ядром без логов утечек.
-            //    var keys = m_ColliderRegistry.GetKeyArray(Allocator.Temp);
-
-            //    for (int i = 0; i < keys.Length; i++)
-            //    {
-            //        var vehicleEntity = keys[i];
-
-            //        // Если сетевая сущность больше не существует в ECS-мире
-            //        if (!this.CheckedStateRef.EntityManager.Exists(vehicleEntity))
-            //        {
-            //            if (m_ColliderRegistry.TryGetValue(vehicleEntity, out var lostGroup))
-            //            {
-            //                if (lostGroup.ColliderBlob.IsCreated)
-            //                {
-            //                    lostGroup.ColliderBlob.Dispose(); // Выгружаем физику из RAM
-            //                }
-            //            }
-            //            m_ColliderRegistry.Remove(vehicleEntity); // Стираем запись без структурных изменений
-            //        }
-            //    }
-
-            //    // При использовании Allocator.Temp вызывать keys.Dispose() НЕОБЯЗАТЕЛЬНО,
-            //    // но явный вызов делает код более аккуратным и чистым.
-            //    keys.Dispose();
-            //}
-
         }
 
         // Гарантируем, что джобы завершились перед тем, как мы начнем чистить память на главном потоке
@@ -451,18 +295,7 @@ public partial class ApplyColliderSystem : SystemBase
                 };
                 m_ColliderRegistry[rootVehicleEntity] = newGroup;
 
-                //// ====================================================================
-                //// ШАГ 2. ОБНУЛЯЕМ СВЯЗЬ С ФИЗИКОЙ ДЛЯ СТАРОГО КОЛЛАЙДЕРА
-                //// ====================================================================
-                //if (EntityManager.HasComponent<PhysicsCollider>(rootVehicleEntity))
-                //{
-                //    var currentColliderRef = SystemAPI.GetComponentRW<PhysicsCollider>(rootVehicleEntity);
-                //    currentColliderRef.ValueRW.Value = default;
-                //}
-
                 // 3. ЗАПИСЫВАЕМ НОВЫЕ ВАЛИДНЫЕ ДАННЫЕ
-                //state.EntityManager.SetComponentData(rootVehicleEntity, newCleanupData);
-                //state.EntityManager.AddComponentData(rootVehicleEntity, new VoxelColliderCleanupMarker { ColliderBlob = finalVehicleCompoundCollider });
                 state.EntityManager.SetComponentData(rootVehicleEntity, new PhysicsCollider { Value = finalVehicleCompoundCollider });
 
                 // 4. ЗАЩИТА МАССЫ ОТ NaN (Деления на ноль)
@@ -573,111 +406,8 @@ public partial class ApplyColliderSystem : SystemBase
         {
             var chunkData = chunksData[i];
 
-            // ====================================================================
-            // ЕДИНАЯ ТОЧКА РУЧНОЙ SAFE-УТИЛИЗАЦИИ ВСЕХ МАССИВОВ ЧАНКА В КАДРЕ
-            // ====================================================================
-            // 2. Стираем буфер unmanaged-счетчиков
-            if (chunkData.SafeCounter.IsCreated) chunkData.SafeCounter.Dispose();
+            if (chunkData.SafeStatus.IsCreated) chunkData.SafeStatus.Dispose();
 
-            //// 3. Стираем С++ блоб меш-коллайдера и сам персональный массив
-            //if (chunkData.SafeColliderBlob.IsCreated)
-            //{
-            //    var chunkMeshColliderRef = chunkData.SafeColliderBlob[0];
-            //    if (chunkMeshColliderRef.IsCreated)
-            //    {
-            //        chunkMeshColliderRef.Dispose();
-            //    }
-            //    chunkData.SafeColliderBlob.Dispose();
-            //}
-            //// ====================================================================
         }
     }
 }
-
-
-
-//using System.Collections.Generic;
-//using Unity.Collections;
-//using Unity.Entities;
-//using Unity.Physics.Systems;
-//using UnityEngine;
-
-//// 1. УПРАВЛЯЕМЫЙ КОМПОНЕНТ ДАННЫХ ДЛЯ ХРАНЕНИЯ ССЫЛОК В КЭШЕ КАДРА
-//public class ClientVoxelMeshFrameStorage : IComponentData
-//{
-//    public List<Mesh> RuntimeMeshes = new List<Mesh>();
-//    public List<Mesh.MeshDataArray> DataArrays = new List<Mesh.MeshDataArray>();
-//    public List<Entity> TargetEntities = new List<Entity>();
-//}
-
-//// Запускаем графическую выгрузку в этой же физической группе, 
-//// строго вслед за завершением работы воксельной Burst-системы!
-//[UpdateInGroup(typeof(PhysicsSystemGroup))]
-//[UpdateAfter(typeof(VoxelMeshAndPhysicsSystem))]
-//[UpdateBefore(typeof(PhysicsSimulationGroup))] // Успеваем выгрузить данные до симуляции физики кадра
-
-//public partial class VoxelMeshRenderFlusherSystem : SystemBase
-//{
-//    protected override void OnUpdate()
-//    {
-//        // Создаем локальный буфер команд managed-мира для структурных изменений кадра
-//        var ecb = new EntityCommandBuffer(Allocator.Temp);
-
-//        // Извлекаем синглтоны для вашего метода выгрузки графики (Config и Storage)
-//        EntityQuery configQuery = SystemAPI.QueryBuilder().WithAll<VoxelGlobalConfigComponent>().Build();
-//        EntityQuery storageQuery = SystemAPI.QueryBuilder().WithAll<ClientVoxelMeshFrameStorage>().Build();
-
-//        // ====================================================================
-//        // КАНОНИЧНАЯ ЗАМЕНА Entities.ForEach ДЛЯ СОВРЕМЕННОГО UNITY DOTS 1.4:
-//        // Используем чистый SystemAPI.Query поверх unmanaged-структуры задачи!
-//        // ====================================================================
-//        foreach (var (renderTask, noticeEntity) in SystemAPI.Query<RefRO<ChunksReadyToRenderTag>>()
-//                     .WithEntityAccess())
-//        {
-//            // 1. БЕЗОПАСНЫЙ MANAGED-ВЫЗОВ ОТРИСОВКИ ЧАНКОВ:
-//            // Мы находимся внутри SystemBase! Никаких BurstCompile здесь нет.
-//            // Шейдерные теги, RenderMeshUtility и меши Unity скомпилируются идеально без BC1091!
-//            VoxelGraphicsExtensions.ExecuteManagedMeshAllocation(
-//                ref this.CheckedStateRef, // Передаем SystemState из managed-оболочки
-//                renderTask.ValueRO.ChunksData,
-//                renderTask.ValueRO.RootVehicleEntity,
-//                renderTask.ValueRO.FinalVehicleCompoundCollider,
-//                configQuery,
-//                storageQuery,
-//                ecb // Передаем буфер команд
-//            );
-//            // ====================================================================
-//            // ПЕРЕНЕСЕННЫЙ ВЕЛИКИЙ АСИНХРОННЫЙ ФИНАЛ: АТОМАРНАЯ ОЧИСТКА ПАМЯТИ
-//            // Меши скопированы в видеокарту, CompoundCollider создан.
-//            // Теперь мы чисто стираем долговременные Persistent-буферы чанков 
-//            // и снимаем Cleanup-компонент, возвращая чанк в общий пул игры!
-//            // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
-//            // ====================================================================
-//            int totalReadyCount = renderTask.ValueRO.ChunksData.Length;
-
-//            // ПРИМЕНЕНО ПРАВИЛО: замена знака отношений на слово
-//            for (int i = 0; i < totalReadyCount; i++)
-//            {
-//                var chunkData = renderTask.ValueRO.ChunksData[i];
-//                Entity chunkEntity = chunkData.TargetEntity;
-
-//                // Физически удаляем C++ массивы из оперативной Persistent-памяти
-//                //if (chunkData.SafeVertices.IsCreated) chunkData.SafeVertices.Dispose();
-//                //if (chunkData.SafeIndices.IsCreated) chunkData.SafeIndices.Dispose();
-//                //if (chunkData.SafeCounter.IsCreated) chunkData.SafeCounter.Dispose();
-//                if (chunkData.SafeColliderBlob.IsCreated) chunkData.SafeColliderBlob.Dispose();
-
-//                // Снимаем стейт-маркер Cleanup. На следующем кадре чанк снова чист для новых деформаций!
-//                ecb.RemoveComponent<ChunkBakingState>(chunkEntity);
-//            }
-//            // ====================================================================
-
-//            // Уничтожаем саму сущность-задачу оповещения рендера, кадр полностью отработал!
-//            ecb.DestroyEntity(noticeEntity);
-//        }
-
-//        // Воспроизводим команды кадра и очищаем буфер команд
-//        ecb.Playback(EntityManager);
-//        ecb.Dispose();
-//    }
-//}

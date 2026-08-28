@@ -8,7 +8,7 @@ public class VoxelClickDestroyer : MonoBehaviour
 {
     [Header("Настройки разрушения")]
     [SerializeField] private float destructionRadius = 2.5f; // Радиус в вокселях
-    [SerializeField] private float maxRayDistance = 100f;
+    //[SerializeField] private float maxRayDistance = 100f;
 
     [SerializeField] private Camera _mainCamera;
     private World _clientWorld;

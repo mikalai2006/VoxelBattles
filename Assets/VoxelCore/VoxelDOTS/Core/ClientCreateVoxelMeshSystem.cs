@@ -85,7 +85,7 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
     }
 
 
-    [BurstCompile(CompileSynchronously = true)]
+    //[BurstCompile(CompileSynchronously = true)]
     public void OnDestroy(ref SystemState state)
     {
         if (m_JobHandles.IsCreated) m_JobHandles.Dispose();
@@ -93,21 +93,62 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
         // Уничтожать контейнеры нужно строго там же, где создавали, чтобы избежать утечек
         if (SystemAPI.TryGetSingleton<VoxelMeshDataRegistrySingleton>(out var singleton))
         {
-            // 1. Очищаем коллайдеры, оставшиеся в реестре
+            //// 1. Очищаем коллайдеры, оставшиеся в реестре
+            //if (singleton.Registry.IsCreated)
+            //{
+            //    // Получаем массив всех значений (маркеров) из хэш-мапы
+            //    var markers = singleton.Registry.GetValueArray(Allocator.Temp);
+
+            //    for (int i = 0; i < markers.Length; i++)
+            //    {
+            //        var marker = markers[i];
+            //        if (marker.SafeVertices.IsCreated) marker.SafeVertices.Dispose();
+            //        if (marker.SafeIndices.IsCreated) marker.SafeIndices.Dispose();
+            //        if (marker.SafeCounter.IsCreated) marker.SafeCounter.Dispose();
+            //    }
+            //    markers.Dispose();
+            //    // Теперь безопасно удаляем саму хэш-мапу
+            //    singleton.Registry.Dispose();
+            //}
             if (singleton.Registry.IsCreated)
             {
-                // Получаем массив всех значений (маркеров) из хэш-мапы
-                var markers = singleton.Registry.GetValueArray(Allocator.Temp);
+                // 1. БЕЗОПАСНЫЙ ПЕРЕБОР: Получаем все КЛЮЧИ (Entity) из хэш-мапы.
+                // Ключи — это простые структуры, их копирование не создаст конфликтов памяти.
+                var keys = singleton.Registry.GetKeyArray(Allocator.Temp);
 
-                for (int i = 0; i < markers.Length; i++)
+                for (int i = 0; i < keys.Length; i++)
                 {
-                    var marker = markers[i];
-                    if (marker.SafeVertices.IsCreated) marker.SafeVertices.Dispose();
-                    if (marker.SafeVertices.IsCreated) marker.SafeVertices.Dispose();
-                    if (marker.SafeCounter.IsCreated) marker.SafeCounter.Dispose();
+                    Entity entityKey = keys[i];
+
+                    // Достаем оригинальную структуру прямо из мапы по ключу
+                    var marker = singleton.Registry[entityKey];
+
+                    // Освобождаем unmanaged-память внутренних массивов чанка строго по одному разу
+                    try
+                    {
+                        if (marker.SafeVertices.IsCreated)
+                        {
+                            marker.SafeVertices.Dispose();
+                        }
+
+                        if (marker.SafeIndices.IsCreated)
+                        {
+                            marker.SafeIndices.Dispose();
+                        }
+
+                        if (marker.SafeStatus.IsCreated)
+                        {
+                            marker.SafeStatus.Dispose();
+                        }
+                    }
+                    catch (System.ObjectDisposedException) { /* Уже удалено, игнорируем */ }
                 }
-                markers.Dispose();
-                // Теперь безопасно удаляем саму хэш-мапу
+
+                // 2. Сначала удаляем временный массив ключей
+                keys.Dispose();
+
+                // 3. ТЕПЕРЬ, когда никакие алиасы не смотрят в память мапы, 
+                // безопасно уничтожаем саму хэш-мапу реестра. Ошибки больше не будет!
                 singleton.Registry.Dispose();
             }
         }
@@ -293,7 +334,7 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
             {
                 if (oldData.SafeVertices.IsCreated) oldData.SafeVertices.Dispose();
                 if (oldData.SafeVertices.IsCreated) oldData.SafeVertices.Dispose();
-                if (oldData.SafeCounter.IsCreated) oldData.SafeCounter.Dispose();
+                if (oldData.SafeStatus.IsCreated) oldData.SafeStatus.Dispose();
             }
             // Теперь мы со спокойной душой перезаписываем маркер свежими массивами текущего кадра!
             voxelMeshDataRegistrySingleton.Registry[entity] = new ChunkMeshData
@@ -301,7 +342,7 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
                 //LastBakingJobHandle = meshJobHandle,
                 SafeVertices = tempVertices, // Новые чистые Persistent-массивы кадра
                 SafeIndices = tempIndices,
-                SafeCounter = singleChunkCounter,
+                SafeStatus = singleChunkCounter,
                 RootVehicleEntity = rootVehicleEntity,
                 LocalOffsetWithPivot = localOffsetWithPivot,
                 LocalBounds = new MinMaxAABB { Min = aabbLocal.Min, Max = aabbLocal.Max },

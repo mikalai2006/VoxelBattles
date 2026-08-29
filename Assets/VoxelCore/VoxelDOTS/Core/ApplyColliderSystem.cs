@@ -10,11 +10,11 @@ public struct NewChunkColliderData
 {
     public Entity TargetEntity;
     //public int JobIndex;
-    public MinMaxAABB LocalBounds;
-    public MinMaxAABB WorldBounds;
+    //public MinMaxAABB LocalBounds;
+    //public MinMaxAABB WorldBounds;
 
-    // ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
-    public NativeArray<int3> SafeStatus; // z - 1-джоба выполнена
+    //// ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
+    //public NativeArray<int3> SafeStatus; // z - 1-джоба выполнена
 
     //// МЕНЯЕМ ТИП: Сюда мы сохраним индивидуальный нативный массив чанка
     //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
@@ -85,7 +85,7 @@ public partial class ApplyColliderSystem : SystemBase
         // Если ни один чанк вокселей в мире не находится в статусе выпекания графики,
         // система мгновенно выходит, затрачивая ровно 0.00 мс времени Main Thread!
         // ====================================================================
-        var flushQuery = SystemAPI.QueryBuilder().WithAll<ChunkColliderData>().Build();
+        var flushQuery = SystemAPI.QueryBuilder().WithAll<ChunkColliderNeedApply>().Build();
         if (flushQuery.IsEmpty)
         {
             return;
@@ -96,37 +96,37 @@ public partial class ApplyColliderSystem : SystemBase
 
         // Выделяем временные контейнеры Mono-кадра для передачи в метод ExecuteManagedMeshAllocation
         var chunksDataArray = new NativeList<NewChunkColliderData>(16, Allocator.Temp);
-        var childOffsetsList = new NativeList<float3>(16, Allocator.Temp);
+        //var childOffsetsList = new NativeList<float3>(16, Allocator.Temp);
         Entity rootVehicleEntity = Entity.Null;
 
         // ====================================================================
         // ФАЗА 2: СБОРКА ЧАНКОВ, КОТОРЫЕ ПОЛНОСТЬЮ ДОПЕКЛИСЬ НА ЯДРАХ CPU
         // ====================================================================
-        foreach (var (chunkColliderData, chunkEntity) in SystemAPI.Query<
-            RefRO<ChunkColliderData>
+        foreach (var (status, chunkEntity) in SystemAPI.Query<
+            RefRO<ChunkColliderNeedApply>
             >()
-            .WithAll<ChunkColliderData>()  // Сущность попадет в выборку, только если у неё присутствует компонент и он включен (Enabled).
+            .WithAll<ChunkColliderNeedApply>()  // Сущность попадет в выборку, только если у неё присутствует компонент и он включен (Enabled).
             .WithEntityAccess())
         {
-
+            var chunkColliderData = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
             // АТОМАРНЫЙ БЕЗОПАСНЫЙ ДЕТЕКТОР:
             // Если фоновый воркер процессора ВСЁ ЕЩЕ ПИШЕТ данные в Persistent-массивы этого чанка —
             // мы КАТЕГОРИЧЕСКИ пропускаем его в текущем кадре симуляции!
             // Вызов .IsCompleted занимает 0.00 мс и НИКОГДА не фризит главный поток игры.
-            if (!chunkColliderData.ValueRO.SafeCounter.IsCreated || chunkColliderData.ValueRO.SafeCounter[0].z != 1)
+            if (!chunkColliderData.SafeStatus.IsCreated || chunkColliderData.SafeStatus[0].z != 1)
             {
                 continue;
             }
 
-            rootVehicleEntity = chunkColliderData.ValueRO.RootVehicleEntity;
+            rootVehicleEntity = chunkColliderData.RootVehicleEntity; //chunkColliderData.ValueRO.RootVehicleEntity;
 
             // Заполняем плоскую структуру NewChunkGraphicsData прямыми С++ ссылками на Persistent массивы
             chunksDataArray.Add(new NewChunkColliderData
             {
                 TargetEntity = chunkEntity,
-                LocalBounds = chunkColliderData.ValueRO.LocalBounds,
-                WorldBounds = chunkColliderData.ValueRO.WorldBounds,
-                SafeStatus = chunkColliderData.ValueRO.SafeCounter,
+                //LocalBounds = chunkColliderData.ValueRO.LocalBounds,
+                //WorldBounds = chunkColliderData.ValueRO.WorldBounds,
+                //SafeStatus = chunkColliderData.ValueRO.SafeCounter,
                 //SafeColliderBlob = chunkColliderData.ValueRO.SafeColliderBlob,
 
             });
@@ -137,7 +137,7 @@ public partial class ApplyColliderSystem : SystemBase
             //UnityEngine.Debug.Log($"[{textWorld}] Добавление NewChunkGraphicsData для {flushTag.ValueRO.index}");
 
 
-            childOffsetsList.Add(chunkColliderData.ValueRO.LocalOffsetWithPivot);
+            //childOffsetsList.Add(chunkColliderData.LocalOffsetWithPivot);
         }
 
         // Если в текущем кадре ни один из чанков еще до конца не завершил фоновые вычисления —
@@ -145,7 +145,7 @@ public partial class ApplyColliderSystem : SystemBase
         if (chunksDataArray.Length == 0)
         {
             chunksDataArray.Dispose();
-            childOffsetsList.Dispose();
+            //childOffsetsList.Dispose();
             return;
         }
 
@@ -158,8 +158,9 @@ public partial class ApplyColliderSystem : SystemBase
 
         for (int i = 0; i < totalReadyCount; i++)
         {
-            int3 finalCounts = chunksDataArray[i].SafeStatus[0];
-            if (finalCounts.x > 0 && voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
+            var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+            int3 finalCounts = dataFromSingleton.SafeStatus[0];
+            if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
             {
                 validCollidersCount++;
             }
@@ -175,13 +176,14 @@ public partial class ApplyColliderSystem : SystemBase
 
             for (int i = 0; i < totalReadyCount; i++)
             {
-                int3 finalCounts = chunksDataArray[i].SafeStatus[0];
-                if (finalCounts.x > 0 && voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
+                var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+                int3 finalCounts = dataFromSingleton.SafeStatus[0];
+                if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
                 {
                     compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
                     {
-                        Collider = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity][0], //chunksDataArray[i].SafeColliderBlob[0],
-                        CompoundFromChild = new RigidTransform(quaternion.identity, childOffsetsList[i]),
+                        Collider = dataFromSingleton.SafeColliderBlob[0], //chunksDataArray[i].SafeColliderBlob[0],
+                        CompoundFromChild = new RigidTransform(quaternion.identity, dataFromSingleton.LocalOffsetWithPivot),//childOffsetsList[i]
                         Entity = chunksDataArray[i].TargetEntity
                     };
                     currentInstanceIdx++;
@@ -196,7 +198,7 @@ public partial class ApplyColliderSystem : SystemBase
             compoundInstances.Dispose();
         }
 
-        childOffsetsList.Dispose();
+        //childOffsetsList.Dispose();
 
         try
         {
@@ -215,7 +217,22 @@ public partial class ApplyColliderSystem : SystemBase
 
                 if (EntityManager.Exists(chunkEntity))
                 {
-                    EntityManager.SetComponentEnabled<ChunkColliderData>(chunkEntity, false); // Выключили до следующего взрыва!
+                    EntityManager.SetComponentEnabled<ChunkColliderNeedApply>(chunkEntity, false); // Выключили до следующего взрыва!
+                }
+
+                // очищаем данные о статусах
+                if (voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length > 0)
+                {
+                    for (int j = 0; j < voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length; j++)
+                    {
+                        var safeStatusItem = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
+                        if (safeStatusItem.SafeStatus.IsCreated)
+                        {
+                            safeStatusItem.SafeStatus.Dispose();
+                            safeStatusItem.SafeStatus = default;
+                        }
+                        voxelChildColliderRegistrySingleton.Registry[chunkEntity] = safeStatusItem;
+                    }
                 }
             }
 
@@ -238,6 +255,7 @@ public partial class ApplyColliderSystem : SystemBase
             voxelChildColliderRegistrySingleton.DisposeList.Clear(); // Обнуляем длину списка для следующего кадра
         }
     }
+
 
 
     // ЭТОТ МЕТОД ВЫПОЛНЯЕТСЯ В MANAGED РЕЖИМЕ БЕЗ КОНФЛИКТОВ С BURST
@@ -399,15 +417,15 @@ public partial class ApplyColliderSystem : SystemBase
         }
         // ====================================================================
 
-        // ====================================================================
-        // ЭТАП 2: БЕЗОПАСНАЯ ФИКСАЦИЯ НА GPU И СБОРКА КОМПОНЕНТОВ BRG
-        // ====================================================================
-        for (int i = 0; i < chunksData.Length; i++)
-        {
-            var chunkData = chunksData[i];
+        //// ====================================================================
+        //// ЭТАП 2: БЕЗОПАСНАЯ ФИКСАЦИЯ НА GPU И СБОРКА КОМПОНЕНТОВ BRG
+        //// ====================================================================
+        //for (int i = 0; i < chunksData.Length; i++)
+        //{
+        //    var chunkData = chunksData[i];
 
-            if (chunkData.SafeStatus.IsCreated) chunkData.SafeStatus.Dispose();
+        //    if (chunkData.SafeStatus.IsCreated) chunkData.SafeStatus.Dispose();
 
-        }
+        //}
     }
 }

@@ -19,17 +19,17 @@ using UnityEngine.Rendering;
 public struct NewChunkMeshData // : IComponentData, IEnableableComponent
 {
     public Entity TargetEntity;
-    public int JobIndex;
-    public MinMaxAABB LocalBounds;
-    public MinMaxAABB WorldBounds;
-    public bool HasGraphicsBefore;
+    //public int JobIndex;
+    //public MinMaxAABB LocalBounds;
+    //public MinMaxAABB WorldBounds;
+    //public bool HasGraphicsBefore;
 
-    // ДОБАВЛЯЕМ: Ссылки на массивы для безопасного С++ копирования
-    public NativeArray<VoxelVertex> SafeVertices;
-    public NativeArray<int> SafeIndices;
+    //// ДОБАВЛЯЕМ: Ссылки на массивы для безопасного С++ копирования
+    //public NativeArray<VoxelVertex> SafeVertices;
+    //public NativeArray<int> SafeIndices;
 
-    // ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
-    public NativeArray<int3> SafeCounter;
+    //// ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
+    //public NativeArray<int3> SafeCounter;
 }
 
 
@@ -101,7 +101,7 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
 
             // Проверяем флаг готовности (z координата нашего нативного счетчика)
             // Если массив не создан или флаг равен 0 — воркер CPU еще пишет данные. Мгновенный пропуск!
-            if (!chunkData.SafeCounter.IsCreated || chunkData.SafeCounter[0].z != 1)
+            if (!chunkData.SafeStatus.IsCreated || chunkData.SafeStatus[0].z != 1)
             {
                 continue;
             }
@@ -112,14 +112,14 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
             chunksDataArray.Add(new NewChunkMeshData
             {
                 TargetEntity = chunkEntity,
-                HasGraphicsBefore = chunkData.HasGraphicsBefore,
-                LocalBounds = chunkData.LocalBounds,
-                WorldBounds = chunkData.WorldBounds,
-                SafeCounter = chunkData.SafeCounter,
+                //HasGraphicsBefore = chunkData.HasGraphicsBefore,
+                //LocalBounds = chunkData.LocalBounds,
+                //WorldBounds = chunkData.WorldBounds,
 
-                // Передаем unmanaged-указатели на Persistent-массивы геометрии чанка
-                SafeVertices = chunkData.SafeVertices,
-                SafeIndices = chunkData.SafeIndices
+                //SafeCounter = chunkData.SafeCounter,
+                //// Передаем unmanaged-указатели на Persistent-массивы геометрии чанка
+                //SafeVertices = chunkData.SafeVertices,
+                //SafeIndices = chunkData.SafeIndices
             });
 
             //UnityEngine.Debug.Log($"[{textWorld}] Добавление NewChunkGraphicsData для {flushTag.ValueRO.index}");
@@ -179,23 +179,38 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         // ====================================================================
         finally
         {
-
             // ====================================================================
             // ЕДИНАЯ ТОЧКА РУЧНОЙ SAFE-УТИЛИЗАЦИИ ВСЕХ МАССИВОВ ЧАНКА В КАДРЕ
             // Память гарантированно очистится ровно ОДИН РАЗ, исключая ObjectDisposedException!
             // ====================================================================
             for (int i = 0; i < chunksDataArray.Length; i++)
             {
+                // 1. Вытаскиваем копию структуры из списка
+                var chunkData = voxelMeshDataRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+
                 // 1. Стираем фоновые массивы вершин и индексов
-                if (chunksDataArray[i].SafeVertices.IsCreated) chunksDataArray[i].SafeVertices.Dispose();
-                if (chunksDataArray[i].SafeIndices.IsCreated) chunksDataArray[i].SafeIndices.Dispose();
+                if (chunkData.SafeVertices.IsCreated)
+                {
+                    chunkData.SafeVertices.Dispose();
+                    chunkData.SafeVertices = default;
+                }
+                if (chunkData.SafeIndices.IsCreated)
+                {
+                    chunkData.SafeIndices.Dispose();
+                    chunkData.SafeIndices = default;
+                }
 
                 // 2. Стираем буфер unmanaged-счетчиков
-                if (chunksDataArray[i].SafeCounter.IsCreated) chunksDataArray[i].SafeCounter.Dispose();
+                if (chunkData.SafeStatus.IsCreated)
+                {
+                    chunkData.SafeStatus.Dispose();
+                    chunkData.SafeStatus = default;
+                }
 
+                // 3. ОБЯЗАТЕЛЬНО записываем измененную структуру ОБРАТНО в список!
+                voxelMeshDataRegistrySingleton.Registry[chunksDataArray[i].TargetEntity] = chunkData;
                 // ====================================================================
             }
-
             // Чистим передаточный список кадра
             chunksDataArray.Dispose();
         }
@@ -211,6 +226,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         //EntityQuery m_StorageQuery
         )
     {
+        var voxelMeshDataRegistrySingleton = SystemAPI.GetSingleton<VoxelMeshDataRegistrySingleton>();
+
         // Извлекаем конфиг
         var brgConfig = state.EntityManager.GetComponentObject<VoxelGlobalConfigComponent>(m_ConfigQuery.GetSingletonEntity());
 
@@ -258,13 +275,14 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         for (int i = 0; i < chunksData.Length; i++)
         {
             ref readonly var chunkData = ref chunksData.ElementAt(i);
-            int3 finalCounts = chunkData.SafeCounter[0];
+            var chankDataFromSingleton = voxelMeshDataRegistrySingleton.Registry[chunkData.TargetEntity];
+            int3 finalCounts = chankDataFromSingleton.SafeStatus[0];
             int vertexCount = finalCounts.x;
             int indexCount = finalCounts.y;
 
             if (vertexCount == 0)
             {
-                if (chunkData.HasGraphicsBefore)
+                if (chankDataFromSingleton.HasGraphicsBefore)
                 {
                     var emptyInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
                     emptyInfo.MeshID = brgConfig.EmptyMeshID;
@@ -296,8 +314,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
             meshData.SetIndexBufferParams(indexCount, IndexFormat.UInt32);
             attributes.Dispose();
 
-            var activeVerticesSubArray = chunkData.SafeVertices.GetSubArray(0, vertexCount);
-            var activeIndicesSubArray = chunkData.SafeIndices.GetSubArray(0, indexCount);
+            var activeVerticesSubArray = chankDataFromSingleton.SafeVertices.GetSubArray(0, vertexCount);
+            var activeIndicesSubArray = chankDataFromSingleton.SafeIndices.GetSubArray(0, indexCount);
 
             meshData.GetVertexData<VoxelVertex>(0).CopyFrom(activeVerticesSubArray);
             meshData.GetIndexData<int>().CopyFrom(activeIndicesSubArray);
@@ -323,8 +341,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
             {
                 // Первая сборка чанка:
                 RenderMeshUtility.AddComponents(chunkData.TargetEntity, state.EntityManager, renderMeshDescription, finalMaterialMeshInfo);
-                state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
-                state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chankDataFromSingleton.LocalBounds });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chankDataFromSingleton.WorldBounds });
 
                 // Привязываем индекс пула к сущности
                 state.EntityManager.AddComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = nextMeshId });
@@ -341,8 +359,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
                 int oldPoolId = oldLink.PoolInstanceId;
 
                 // Мгновенно переключаем рендерер на НОВЫЙ меш (без задержек кадра)
-                state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chunkData.LocalBounds });
-                state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chunkData.WorldBounds });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new RenderBounds { Value = chankDataFromSingleton.LocalBounds });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chankDataFromSingleton.WorldBounds });
                 state.EntityManager.SetComponentData(chunkData.TargetEntity, finalMaterialMeshInfo);
 
                 // Запоминаем в ссылке новый ID из пула

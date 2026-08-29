@@ -86,30 +86,45 @@ public struct VoxelColliderCleanupMarker //: IComponentData //, ICleanupComponen
     // но сущность ОСТАНЕТСЯ в памяти как "призрак" только с этим компонентом,
     // пока мы вручную её не задиспозим и не снимем маркер.
     public BlobAssetReference<Unity.Physics.Collider> ColliderBlob;
+    //public NativeArray<int3> SafeStatus;
     // Безопасный ECS-список для хранения дочерних коллайдеров воксельных чанков.
     // Вмещает до 15 чанков на одну машину (если чанков больше, используйте FixedList512Bytes)
     //public FixedList128Bytes<BlobAssetReference<Unity.Physics.Collider>> ChildBlobs;
+}
+
+
+//[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
+public struct ChunkColliderData //: IComponentData //, IEnableableComponent
+{
+    public NativeArray<int3> SafeStatus;
+    public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
+
+    public Entity RootVehicleEntity;
+    public float3 LocalOffsetWithPivot;
+    public MinMaxAABB LocalBounds;
+    public MinMaxAABB WorldBounds;
+    public bool HasGraphicsBefore;
+    public int3 index;
 }
 
 public struct VoxelChildColliderRegistrySingleton : IComponentData
 {
     // Синглтон просто хранит ссылки на нативные контейнеры, 
     // которые выделены в неуправляемой куче (Persistent)
-    public NativeParallelHashMap<Entity, NativeArray<BlobAssetReference<Unity.Physics.Collider>>> Registry;
+    public NativeParallelHashMap<Entity, ChunkColliderData> Registry;
     public NativeList<BlobAssetReference<Collider>> DisposeList;
 }
 
-[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
-public struct ChunkMeshData : IComponentData // , IEnableableComponent
+//[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
+public struct ChunkMeshData //: IComponentData // , IEnableableComponent
 {
     // Храним чистые, изолированные C++ массивы геометрии ТОЛЬКО этого чанка!
     public NativeArray<VoxelVertex> SafeVertices;
     public NativeArray<int> SafeIndices;
-    public NativeArray<int3> SafeCounter;
+    public NativeArray<int3> SafeStatus;
 
     //// Ссылка на хэндл джобы для точечной проверки готовности
     //public JobHandle LastBakingJobHandle;
-
     public Entity RootVehicleEntity;
     public float3 LocalOffsetWithPivot;
     public MinMaxAABB LocalBounds;

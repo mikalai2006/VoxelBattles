@@ -22,7 +22,8 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             // 1. ЖЕСТКОЕ ЗАПЕКАНИЕ ЛОКАЛЬНОГО БУФЕРА МАСКИ РАЗРУШЕНИЙ
             // В Entities 1.4.7 вызов AddBuffer гарантирует, что при создании сущности 
             // из префаба на клиенте и сервере под маску 512 ulong сразу зарезервируется unmanaged-память.
-            var maskBuffer = AddBuffer<LocalChunkDestructionMask>(entity);
+            //var maskBuffer =
+            AddBuffer<LocalChunkDestructionMask>(entity);
             // ====================================================================
             // ЖЕЛЕЗОБЕТОННЫЙ SAFE ФИКС КРАША ДЕСЕРИАЛИЗАЦИИ NETCODE:
             // Мы обязаны принудительно задать размер буфера прямо в префабе при бейке!
@@ -30,7 +31,7 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             // Автогенерируемый код Netcode больше не споткнется о пустой массив, 
             // джоба десериализации не упадет, и Ghost Map сопоставит ID идеально ровно.
             // ====================================================================
-            maskBuffer.ResizeUninitialized(512);
+            //maskBuffer.ResizeUninitialized(512);
             // ====================================================================
 
             // 2. ДОБАВЛЯЕМ РАНТАЙМ-МЕТАДАННЫЕ ЧАНКА (Индексы и связь с моделью)
@@ -39,14 +40,13 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
 
             AddComponent<NetworkParent>(entity);
 
-            // 3. КОМПОНЕНТЫ-ПЕРЕКЛЮЧАТЕЛИ АКТИВНОСТИ И СТЕЙТЫ
-            AddComponent<ChunkActiveState>(entity);
-            AddComponent<ChunkPhysicsActiveState>(entity);
-
-            // По умолчанию тушим стейты. Их активирует клиентская система мешинга, 
-            // когда чанк будет полностью распакован и готов к отрисовке.
-            SetComponentEnabled<ChunkActiveState>(entity, false);
-            SetComponentEnabled<ChunkPhysicsActiveState>(entity, false);
+            //// 3. КОМПОНЕНТЫ-ПЕРЕКЛЮЧАТЕЛИ АКТИВНОСТИ И СТЕЙТЫ
+            //AddComponent<ChunkActiveState>(entity);
+            //AddComponent<ChunkPhysicsActiveState>(entity);
+            //// По умолчанию тушим стейты. Их активирует клиентская система мешинга, 
+            //// когда чанк будет полностью распакован и готов к отрисовке.
+            //SetComponentEnabled<ChunkActiveState>(entity, false);
+            //SetComponentEnabled<ChunkPhysicsActiveState>(entity, false);
 
             //// 4. ТЕГ КЛИЕНТСКОГО РЕНДЕРА
             //AddComponent<ClientRenderState>(entity);
@@ -67,6 +67,8 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
 
             AddComponent<ChunkColliderNeedCreate>(entity);
             SetComponentEnabled<ChunkColliderNeedCreate>(entity, false);
+            AddComponent<ChunkColliderNeedApply>(entity);
+            SetComponentEnabled<ChunkColliderNeedApply>(entity, false);
 
             AddComponent<ChunkColliderData>(entity);
             SetComponentEnabled<ChunkColliderData>(entity, false);
@@ -74,9 +76,11 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             // данные для меша
             AddComponent<ChunkMeshNeedCreate>(entity);
             SetComponentEnabled<ChunkMeshNeedCreate>(entity, false);
+            AddComponent<ChunkMeshNeedApply>(entity);
+            SetComponentEnabled<ChunkMeshNeedApply>(entity, false);
 
-            AddComponent<ChunkMeshData>(entity);
-            SetComponentEnabled<ChunkMeshData>(entity, false);
+            //AddComponent<ChunkMeshData>(entity);
+            //SetComponentEnabled<ChunkMeshData>(entity, false);
 
             AddComponent<ChunkMeshLink>(entity);
         }

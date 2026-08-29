@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/VoxelCore/VoxelDOTS/Test/DOTS_BEGIN_SCENE.unity
+    path: Assets/Scenes/DOTS.unity
     guid: 38437f2166b99ac4e803397b0054957f
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: da0efe76a9162894596f36d53f08320d, type: 2}

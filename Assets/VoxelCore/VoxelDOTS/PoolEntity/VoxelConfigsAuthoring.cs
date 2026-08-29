@@ -93,7 +93,7 @@ public class VoxelConfigsAuthoring : MonoBehaviour
             }
             else
             {
-                Debug.LogError("[Voxel System]: Ошибка запекания! Префаб корня или чанка не назначен в VoxelConfigsAuthoring.");
+                Debug.LogWarning("[Voxel System]: Ошибка запекания! Префаб корня или чанка не назначен в VoxelConfigsAuthoring.");
             }
         }
     }

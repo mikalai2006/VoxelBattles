@@ -1,8 +1,9 @@
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.NetCode;
-using Unity.Physics;
+public enum PhysicChunkMode : byte
+{
+    Static,
+    Dynamic,
+    Trigger
+}
 
 //// 1. Структура вершины (Остается без изменений)
 //[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
@@ -18,56 +19,50 @@ using Unity.Physics;
 //    }
 //}
 
-// 2. Сетевой маркер Корня Модели (Root Entity)
-// Этот компонент вешается на главный корневой объект модели.
-[GhostComponent]
-public struct GhostModelRootData : IComponentData
-{
-    [GhostField] public int RuntimeModelId; // ID модели для инспектора/кэша
-    [GhostField] public float VoxelSize;
-}
+//// 2. Сетевой маркер Корня Модели (Root Entity)
+//// Этот компонент вешается на главный корневой объект модели.
+//[GhostComponent]
+//public struct GhostModelRootData : IComponentData
+//{
+//    [GhostField] public int RuntimeModelId; // ID модели для инспектора/кэша
+//    [GhostField] public float VoxelSize;
+//}
 
-// 4. Локальный рантайм-компонент на Корне Модели (Хранилище карты чанков)
-// Netcode его НЕ передает. Сервер заполняет его при спавне, а Клиент — по мере прилета чанков.
-public struct VoxelModelRuntimeState : IComponentData
-{
-    // Ваша карта существующих чанков. Теперь она безопасно живет в локальном стейте корня!
-    public NativeParallelHashMap<int3, ChunkSparseData> SparseChunks;
-    public bool IsDirty;
-}
+//// 4. Локальный рантайм-компонент на Корне Модели (Хранилище карты чанков)
+//// Netcode его НЕ передает. Сервер заполняет его при спавне, а Клиент — по мере прилета чанков.
+//public struct VoxelModelRuntimeState : IComponentData
+//{
+//    // Ваша карта существующих чанков. Теперь она безопасно живет в локальном стейте корня!
+//    public NativeParallelHashMap<int3, ChunkSparseData> SparseChunks;
+//    public bool IsDirty;
+//}
 
-// Данные ячейки вашей карты чанков
-public struct ChunkSparseData
-{
-    public Entity ChunkEntity; // Ссылка на сущность конкретного чанка
-    public int VertexOffset;
-    public bool IsChunkDirty;
-}
+//// Данные ячейки вашей карты чанков
+//public struct ChunkSparseData
+//{
+//    public Entity ChunkEntity; // Ссылка на сущность конкретного чанка
+//    public int VertexOffset;
+//    public bool IsChunkDirty;
+//}
 
-// 5. Локальный рантайм-компонент Физики Чанка (Ваши unmanaged-списки)
-// Эти данные уникальны для каждого чанка и рассчитываются локально (не для сети!)
-public struct VoxelChunkPhysicsState : IComponentData
-{
-    // Список боксов для CompoundCollider чанка 32^3
-    public NativeList<BlobAssetReference<Unity.Physics.Collider>> ActiveChildColliders;
-    public BlobAssetReference<Unity.Physics.Collider> CurrentRootCollider;
+//// 5. Локальный рантайм-компонент Физики Чанка (Ваши unmanaged-списки)
+//// Эти данные уникальны для каждого чанка и рассчитываются локально (не для сети!)
+//public struct VoxelChunkPhysicsState : IComponentData
+//{
+//    // Список боксов для CompoundCollider чанка 32^3
+//    public NativeList<BlobAssetReference<Unity.Physics.Collider>> ActiveChildColliders;
+//    public BlobAssetReference<Unity.Physics.Collider> CurrentRootCollider;
 
-    public PhysicChunkMode PhysicsMode;
-    public CollisionFilter CollisionFilter;
-    public float Mass;
-    public bool IsDirty;
-}
+//    public PhysicChunkMode PhysicsMode;
+//    public CollisionFilter CollisionFilter;
+//    public float Mass;
+//    public bool IsDirty;
+//}
 
-// Компоненты-переключатели активности (Остаются без изменений, поддерживают IEnableableComponent)
-public struct ChunkActiveState : IComponentData, IEnableableComponent { }
-public struct ChunkPhysicsActiveState : IComponentData, IEnableableComponent { }
+//// Компоненты-переключатели активности (Остаются без изменений, поддерживают IEnableableComponent)
+//public struct ChunkActiveState : IComponentData, IEnableableComponent { }
+//public struct ChunkPhysicsActiveState : IComponentData, IEnableableComponent { }
 
-public enum PhysicChunkMode : byte
-{
-    Static,
-    Dynamic,
-    Trigger
-}
 
 
 //using Unity.Collections;

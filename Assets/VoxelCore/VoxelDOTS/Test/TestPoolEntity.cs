@@ -25,7 +25,7 @@ public class TestPoolEntity : MonoBehaviour
     // ПЕРЕМЕННЫЕ ДЛЯ КЛИКОВ: Отслеживают координаты следующей свободной ячейки
     private int _currentClickX = 0;
     private int _currentClickZ = 0;
-    private int _nextModelIndex = 0;
+    //private int _nextModelIndex = 0;
     //[SerializeField] private int countCreate = 0;
     //[SerializeField] private int countRemove = 0;
 
@@ -398,55 +398,55 @@ public class TestPoolEntity : MonoBehaviour
         }
     }
 
-    private void DespawnVehicle()
-    {
-        // Если на сцене нет ни одного объекта — деспавнить нечего
-        if (_activeEntities.Count == 0)
-        {
-            return;
-        }
+    //private void DespawnVehicle()
+    //{
+    //    // Если на сцене нет ни одного объекта — деспавнить нечего
+    //    if (_activeEntities.Count == 0)
+    //    {
+    //        return;
+    //    }
 
-        // 1. Берем индекс самого последнего добавленного объекта
-        int lastIndex = _activeEntities.Count - 1;
-        Entity entityToDespawn = _activeEntities[lastIndex];
+    //    // 1. Берем индекс самого последнего добавленного объекта
+    //    int lastIndex = _activeEntities.Count - 1;
+    //    Entity entityToDespawn = _activeEntities[lastIndex];
 
-        // ПРАВКА: Получаем менеджер сущностей из текущего мира
-        var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+    //    // ПРАВКА: Получаем менеджер сущностей из текущего мира
+    //    var em = World.DefaultGameObjectInjectionWorld.EntityManager;
 
-        // КРИТИЧЕСКАЯ ПРАВКА: Проверяем, существует ли сущность в мире.
-        // А метод IsComponentEnabled точно скажет нам, не спит ли она уже в пуле.
-        if (em.Exists(entityToDespawn) && em.IsComponentEnabled<ChunkActiveState>(entityToDespawn))
-        {
-            // Вызываем метод пула. Теперь он работает мгновенно и без Double Dispose
-            //_poolPhysicsSystem.DespawnEntity(entityToDespawn);
-        }
+    //    // КРИТИЧЕСКАЯ ПРАВКА: Проверяем, существует ли сущность в мире.
+    //    // А метод IsComponentEnabled точно скажет нам, не спит ли она уже в пуле.
+    //    if (em.Exists(entityToDespawn) && em.IsComponentEnabled<ChunkActiveState>(entityToDespawn))
+    //    {
+    //        // Вызываем метод пула. Теперь он работает мгновенно и без Double Dispose
+    //        //_poolPhysicsSystem.DespawnEntity(entityToDespawn);
+    //    }
 
-        // 3. Удаляем ссылку из нашего списка учета
-        _activeEntities.RemoveAt(lastIndex);
+    //    // 3. Удаляем ссылку из нашего списка учета
+    //    _activeEntities.RemoveAt(lastIndex);
 
-        // 4. Сдвигаем координаты сетки назад, чтобы вернуть указатель в освободившуюся ячейку
-        _currentClickX--;
+    //    // 4. Сдвигаем координаты сетки назад, чтобы вернуть указатель в освободившуюся ячейку
+    //    _currentClickX--;
 
-        // Безопасная проверка выхода за границы без знака "меньше"
-        if (_currentClickX == -1)
-        {
-            // Если ушли в минус по X, возвращаемся на конец предыдущего ряда по Z
-            _currentClickX = columns - 1;
-            _currentClickZ--;
+    //    // Безопасная проверка выхода за границы без знака "меньше"
+    //    if (_currentClickX == -1)
+    //    {
+    //        // Если ушли в минус по X, возвращаемся на конец предыдущего ряда по Z
+    //        _currentClickX = columns - 1;
+    //        _currentClickZ--;
 
-            if (_currentClickZ == -1)
-            {
-                _currentClickZ = 0;
-            }
-        }
+    //        if (_currentClickZ == -1)
+    //        {
+    //            _currentClickZ = 0;
+    //        }
+    //    }
 
-        // Корректируем индекс прокрутки моделей назад
-        _nextModelIndex--;
-        if (_nextModelIndex == -1)
-        {
-            _nextModelIndex = modelsToSpawn.Count - 1;
-        }
-    }
+    //    // Корректируем индекс прокрутки моделей назад
+    //    _nextModelIndex--;
+    //    if (_nextModelIndex == -1)
+    //    {
+    //        _nextModelIndex = modelsToSpawn.Count - 1;
+    //    }
+    //}
 
     private void SpawnVehicleRPC()
     {

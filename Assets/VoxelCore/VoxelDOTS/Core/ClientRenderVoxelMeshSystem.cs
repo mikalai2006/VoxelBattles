@@ -79,7 +79,7 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         // Если ни один чанк вокселей в мире не находится в статусе выпекания графики,
         // система мгновенно выходит, затрачивая ровно 0.00 мс времени Main Thread!
         // ====================================================================
-        var flushQuery = SystemAPI.QueryBuilder().WithAll<ChunkMeshData>().Build();
+        var flushQuery = SystemAPI.QueryBuilder().WithAll<ChunkMeshNeedApply>().Build();
         if (flushQuery.IsEmpty) return;
 
         // Выделяем временные контейнеры Mono-кадра для передачи в метод ExecuteManagedMeshAllocation
@@ -87,40 +87,44 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         var childOffsetsList = new NativeList<float3>(16, Allocator.Temp);
         Entity rootVehicleEntity = Entity.Null;
 
+        var voxelMeshDataRegistrySingleton = SystemAPI.GetSingleton<VoxelMeshDataRegistrySingleton>();
+
         // ====================================================================
         // ФАЗА 2: СБОРКА ЧАНКОВ, КОТОРЫЕ ПОЛНОСТЬЮ ДОПЕКЛИСЬ НА ЯДРАХ CPU
         // ====================================================================
-        foreach (var (chunkData, chunkEntity) in SystemAPI.Query<RefRO<ChunkMeshData>>()
-            .WithAll<ChunkMeshData>()
+        foreach (var (chunkStatus, chunkEntity) in SystemAPI.Query<RefRO<ChunkMeshNeedApply>>()
+            .WithAll<ChunkMeshNeedApply>()
             .WithEntityAccess()
         )
         {
+            var chunkData = voxelMeshDataRegistrySingleton.Registry[chunkEntity];
+
             // Проверяем флаг готовности (z координата нашего нативного счетчика)
             // Если массив не создан или флаг равен 0 — воркер CPU еще пишет данные. Мгновенный пропуск!
-            if (!chunkData.ValueRO.SafeCounter.IsCreated || chunkData.ValueRO.SafeCounter[0].z != 1)
+            if (!chunkData.SafeCounter.IsCreated || chunkData.SafeCounter[0].z != 1)
             {
                 continue;
             }
 
-            rootVehicleEntity = chunkData.ValueRO.RootVehicleEntity;
+            rootVehicleEntity = chunkData.RootVehicleEntity;
 
             // Заполняем плоскую структуру NewChunkGraphicsData прямыми С++ ссылками на Persistent массивы
             chunksDataArray.Add(new NewChunkMeshData
             {
                 TargetEntity = chunkEntity,
-                HasGraphicsBefore = chunkData.ValueRO.HasGraphicsBefore,
-                LocalBounds = chunkData.ValueRO.LocalBounds,
-                WorldBounds = chunkData.ValueRO.WorldBounds,
-                SafeCounter = chunkData.ValueRO.SafeCounter,
+                HasGraphicsBefore = chunkData.HasGraphicsBefore,
+                LocalBounds = chunkData.LocalBounds,
+                WorldBounds = chunkData.WorldBounds,
+                SafeCounter = chunkData.SafeCounter,
 
                 // Передаем unmanaged-указатели на Persistent-массивы геометрии чанка
-                SafeVertices = chunkData.ValueRO.SafeVertices,
-                SafeIndices = chunkData.ValueRO.SafeIndices
+                SafeVertices = chunkData.SafeVertices,
+                SafeIndices = chunkData.SafeIndices
             });
 
             //UnityEngine.Debug.Log($"[{textWorld}] Добавление NewChunkGraphicsData для {flushTag.ValueRO.index}");
 
-            childOffsetsList.Add(chunkData.ValueRO.LocalOffsetWithPivot);
+            childOffsetsList.Add(chunkData.LocalOffsetWithPivot);
         }
 
         // Если в текущем кадре ни один из чанков еще до конца не завершил фоновые вычисления —
@@ -154,7 +158,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
 
                 if (EntityManager.Exists(chunkEntity))
                 {
-                    EntityManager.SetComponentEnabled<ChunkMeshData>(chunkEntity, false); // Выключили до следующего взрыва!
+                    //EntityManager.SetComponentEnabled<ChunkMeshData>(chunkEntity, false); // Выключили до следующего взрыва!
+                    EntityManager.SetComponentEnabled<ChunkMeshNeedApply>(chunkEntity, false);
                 }
             }
 
@@ -265,8 +270,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
                     emptyInfo.MeshID = brgConfig.EmptyMeshID;
                     ecb.SetComponent(chunkData.TargetEntity, emptyInfo);
                 }
-                ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
-                ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);
+                //ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
+                //ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);
                 continue;
             }
 
@@ -505,8 +510,8 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
             ////    ecb.SetComponent(chunkData.TargetEntity, finalMaterialMeshInfo);
             ////}
 
-            ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
-            ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);
+            //ecb.SetComponentEnabled<ChunkActiveState>(chunkData.TargetEntity, true);
+            //ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkData.TargetEntity, true);
         }
     }
 }

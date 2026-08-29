@@ -142,10 +142,10 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             //}
 
 
-            // 5. Спавни чанки сразу активными и взводим тег рендеринга
-            ecb.SetComponentEnabled<ChunkActiveState>(chunkEntity, false);
-            ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkEntity, false);
-            //ecb.SetComponentEnabled<ChunkGraphicsFlushTag>(chunkEntity, false);
+            //// 5. Спавни чанки сразу активными и взводим тег рендеринга
+            //ecb.SetComponentEnabled<ChunkActiveState>(chunkEntity, false);
+            //ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkEntity, false);
+            ////ecb.SetComponentEnabled<ChunkGraphicsFlushTag>(chunkEntity, false);
 
             ecb.SetComponentEnabled<ChunkMeshNeedCreate>(chunkEntity, true);
             ecb.SetComponentEnabled<ChunkColliderNeedCreate>(chunkEntity, true);

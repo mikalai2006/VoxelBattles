@@ -23,6 +23,7 @@ public struct MeshGreedyJobSafeDirect : IJob
     public NativeArray<VoxelVertex> OutputVertices;
     public NativeArray<int> OutputIndices;
     public NativeArray<int3> JobCountersRef;
+    //public int3 JobCountersRef;
 
     [BurstCompile]
     public void Execute()

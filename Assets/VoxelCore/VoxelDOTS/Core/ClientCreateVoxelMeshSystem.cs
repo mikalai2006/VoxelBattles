@@ -8,27 +8,8 @@ using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
 
-
 public struct ChunkMeshNeedCreate : IComponentData, IEnableableComponent { }
-
-[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
-public struct ChunkMeshData : IComponentData, IEnableableComponent
-{
-    // Храним чистые, изолированные C++ массивы геометрии ТОЛЬКО этого чанка!
-    public NativeArray<VoxelVertex> SafeVertices;
-    public NativeArray<int> SafeIndices;
-    public NativeArray<int3> SafeCounter;
-
-    // Ссылка на хэндл джобы для точечной проверки готовности
-    public JobHandle LastBakingJobHandle;
-
-    public Entity RootVehicleEntity;
-    public float3 LocalOffsetWithPivot;
-    public MinMaxAABB LocalBounds;
-    public MinMaxAABB WorldBounds;
-    public bool HasGraphicsBefore;
-    public int3 index;
-}
+public struct ChunkMeshNeedApply : IComponentData, IEnableableComponent { }
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(InitializationSystemGroup))]
@@ -36,9 +17,9 @@ public struct ChunkMeshData : IComponentData, IEnableableComponent
 [BurstCompile]
 public partial struct ClientCreateVoxelMeshSystem : ISystem
 {
-    private ComponentLookup<ChunkMeshData> m_ChunkDataLookup;
+    //private ComponentLookup<ChunkMeshData> m_ChunkDataLookup;
 
-    private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
+    //private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
 
     private ComponentLookup<Parent> m_ParentLookup;
 
@@ -50,18 +31,31 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
 
     private EntityQuery m_RebuildChunksQuery;
 
-    [BurstCompile(CompileSynchronously = true)]
+    //[BurstCompile(CompileSynchronously = true)]
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GlobalVoxelModelCache>();
         state.RequireForUpdate<VoxelGlobalConfigComponent>();
 
+        // Создаем сущность-синглтон и записываем туда ссылки
+        //if (state.World.IsClient())
+        //{
+        // Выделяем память под контейнеры
+        var registry = new NativeParallelHashMap<Entity, ChunkMeshData>(100000, Allocator.Persistent);
+
+        Entity singletonEntity = state.EntityManager.CreateEntity();
+        state.EntityManager.AddComponentData(singletonEntity, new VoxelMeshDataRegistrySingleton
+        {
+            Registry = registry
+        });
+        //}
+
         m_MaskTypeHandle = state.GetBufferTypeHandle<LocalChunkDestructionMask>(true);
 
         m_JobHandles = new NativeList<JobHandle>(16, Allocator.Persistent);
 
-        m_ChunkDataLookup = state.GetComponentLookup<ChunkMeshData>();
-        m_ActiveStateLookup = state.GetComponentLookup<ChunkActiveState>();
+        //m_ChunkDataLookup = state.GetComponentLookup<ChunkMeshData>();
+        //m_ActiveStateLookup = state.GetComponentLookup<ChunkActiveState>();
 
         // Инициализируем лукапы при создании системы
         m_ParentLookup = state.GetComponentLookup<Parent>(true); // true = ReadOnly
@@ -95,24 +89,46 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
     public void OnDestroy(ref SystemState state)
     {
         if (m_JobHandles.IsCreated) m_JobHandles.Dispose();
+
+        // Уничтожать контейнеры нужно строго там же, где создавали, чтобы избежать утечек
+        if (SystemAPI.TryGetSingleton<VoxelMeshDataRegistrySingleton>(out var singleton))
+        {
+            // 1. Очищаем коллайдеры, оставшиеся в реестре
+            if (singleton.Registry.IsCreated)
+            {
+                // Получаем массив всех значений (маркеров) из хэш-мапы
+                var markers = singleton.Registry.GetValueArray(Allocator.Temp);
+
+                for (int i = 0; i < markers.Length; i++)
+                {
+                    var marker = markers[i];
+                    if (marker.SafeVertices.IsCreated) marker.SafeVertices.Dispose();
+                    if (marker.SafeVertices.IsCreated) marker.SafeVertices.Dispose();
+                    if (marker.SafeCounter.IsCreated) marker.SafeCounter.Dispose();
+                }
+                markers.Dispose();
+                // Теперь безопасно удаляем саму хэш-мапу
+                singleton.Registry.Dispose();
+            }
+        }
     }
 
 
     [BurstCompile(CompileSynchronously = true)]
     public void OnUpdate(ref SystemState state)
     {
-        m_ChunkDataLookup.Update(ref state);
-        m_ActiveStateLookup.Update(ref state);
+        //m_ChunkDataLookup.Update(ref state);
+        //m_ActiveStateLookup.Update(ref state);
         m_ParentLookup.Update(ref state);
         m_GhostInstanceLookup.Update(ref state);
         m_MaskTypeHandle.Update(ref state);
 
         var cache = SystemAPI.GetSingleton<GlobalVoxelModelCache>();
+        var voxelMeshDataRegistrySingleton = SystemAPI.GetSingleton<VoxelMeshDataRegistrySingleton>();
 
         uint lastSystemVersion = state.LastSystemVersion;
 
         m_JobHandles.Clear();
-
 
         var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
@@ -272,15 +288,17 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
                 aabbWorld = Unity.Mathematics.AABB.Transform(parentLtw.Value, aabbLocal);
             }
 
-            // ====================================================================
-            // БЕЗОПАСНАЯ РЕГИСТРАЦИЯ НА СУЩНОСТИ ЧАНКА:
-            // Откладываем добавление компонента-маркера выгрузки графики в ECB.
-            // OnUpdate завершается мгновенно, оставаясь на 100% BurstCompile-чистым!
-            // ====================================================================
-            // Теперь мы со спокойной душой перезаписываем маркер свежими массивами текущего кадра!
-            m_ChunkDataLookup[entity] = new ChunkMeshData
+            // Очистка существующей записи
+            if (voxelMeshDataRegistrySingleton.Registry.TryGetValue(entity, out var oldData))
             {
-                LastBakingJobHandle = meshJobHandle,
+                if (oldData.SafeVertices.IsCreated) oldData.SafeVertices.Dispose();
+                if (oldData.SafeVertices.IsCreated) oldData.SafeVertices.Dispose();
+                if (oldData.SafeCounter.IsCreated) oldData.SafeCounter.Dispose();
+            }
+            // Теперь мы со спокойной душой перезаписываем маркер свежими массивами текущего кадра!
+            voxelMeshDataRegistrySingleton.Registry[entity] = new ChunkMeshData
+            {
+                //LastBakingJobHandle = meshJobHandle,
                 SafeVertices = tempVertices, // Новые чистые Persistent-массивы кадра
                 SafeIndices = tempIndices,
                 SafeCounter = singleChunkCounter,
@@ -292,12 +310,15 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
                 index = chunkIndex.ValueRO.Value,
             };
 
-            m_ChunkDataLookup.SetComponentEnabled(entity, true);
+            //m_ChunkDataLookup.SetComponentEnabled(entity, true);
 
             jobIndex++;
+
+            state.EntityManager.SetComponentEnabled<ChunkMeshNeedApply>(entity, true);
         }
 
         if (childOffsetsArray.IsCreated) childOffsetsArray.Dispose();
+
 
         // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
         if (m_JobHandles.Length == 0)

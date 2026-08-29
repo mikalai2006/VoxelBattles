@@ -99,6 +99,30 @@ public struct VoxelChildColliderRegistrySingleton : IComponentData
     public NativeList<BlobAssetReference<Collider>> DisposeList;
 }
 
+[ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
+public struct ChunkMeshData : IComponentData // , IEnableableComponent
+{
+    // Храним чистые, изолированные C++ массивы геометрии ТОЛЬКО этого чанка!
+    public NativeArray<VoxelVertex> SafeVertices;
+    public NativeArray<int> SafeIndices;
+    public NativeArray<int3> SafeCounter;
+
+    //// Ссылка на хэндл джобы для точечной проверки готовности
+    //public JobHandle LastBakingJobHandle;
+
+    public Entity RootVehicleEntity;
+    public float3 LocalOffsetWithPivot;
+    public MinMaxAABB LocalBounds;
+    public MinMaxAABB WorldBounds;
+    public bool HasGraphicsBefore;
+    public int3 index;
+}
+
+public struct VoxelMeshDataRegistrySingleton : IComponentData
+{
+    public NativeParallelHashMap<Entity, ChunkMeshData> Registry;
+}
+
 ///// <summary>
 ///// Тег пометки сущностей, которые прошли 
 ///// </summary>

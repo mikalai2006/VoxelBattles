@@ -8,6 +8,8 @@ using Unity.Physics;
 using Unity.Transforms;
 
 public struct ChunkColliderNeedCreate : IComponentData, IEnableableComponent { }
+public struct ChunkColliderNeedApply : IComponentData, IEnableableComponent { }
+
 [ChunkSerializable]// Разрешает Live Conversion игнорировать NativeArray внутри префаба
 public struct ChunkColliderData : IComponentData, IEnableableComponent
 {
@@ -31,7 +33,7 @@ public struct ChunkColliderData : IComponentData, IEnableableComponent
 public partial struct CreateColliderSystem : ISystem
 {
     // Внутри объявления структуры вашей системы (ISystem):
-    private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
+    //private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
     private ComponentLookup<ChunkColliderData> m_ChunkColliderDataLookup;
     private BufferLookup<LocalChunkDestructionMask> m_MaskBufferLookup;
     private ComponentLookup<Parent> m_ParentLookup;
@@ -69,7 +71,7 @@ public partial struct CreateColliderSystem : ISystem
         m_JobHandles = new NativeList<JobHandle>(16, Allocator.Persistent);
 
         // Инициализируем лукапы при создании системы // true = ReadOnly
-        m_ActiveStateLookup = state.GetComponentLookup<ChunkActiveState>();
+        //m_ActiveStateLookup = state.GetComponentLookup<ChunkActiveState>();
         m_ChunkColliderDataLookup = state.GetComponentLookup<ChunkColliderData>();
         m_MaskBufferLookup = state.GetBufferLookup<LocalChunkDestructionMask>(true);
         m_ParentLookup = state.GetComponentLookup<Parent>(true);
@@ -156,7 +158,7 @@ public partial struct CreateColliderSystem : ISystem
         var cache = SystemAPI.GetSingleton<GlobalVoxelModelCache>();
 
         // Лукапы состояний обновляем
-        m_ActiveStateLookup.Update(ref state);
+        //m_ActiveStateLookup.Update(ref state);
         m_ChunkColliderDataLookup.Update(ref state);
         m_MaskBufferLookup.Update(ref state);
         m_ParentLookup.Update(ref state);

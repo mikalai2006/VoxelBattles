@@ -41,27 +41,6 @@ public class VoxelModelCacheManager : MonoBehaviour
         BakeAndRegisterAllModels();
     }
 
-    //private void InitializePalette()
-    //{
-    //    _paletteRegistry.Clear();
-
-    //    // Индекс 0 строго зарезервирован под воздух (уничтоженный воксель)
-    //    int currentByteIndex = 1;
-
-    //    for (int i = 0; i < colorPalette.Count; i++)
-    //    {
-    //        // Лимит байта — 255 уникальных цветов в одной палитре
-    //        if (currentByteIndex > 255) break;
-
-    //        Color32 color = colorPalette[i];
-    //        if (!_paletteRegistry.ContainsKey(color))
-    //        {
-    //            _paletteRegistry[color] = (byte)currentByteIndex;
-    //            currentByteIndex++;
-    //        }
-    //    }
-    //}
-
     private void BakeAndRegisterAllModels()
     {
         // КРИТИЧЕСКИЙ ФИКС ДЛЯ МУЛЬТИПЛЕЕРА UNITY 6 (MULTI-WORLD):
@@ -83,10 +62,18 @@ public class VoxelModelCacheManager : MonoBehaviour
 
             // Создаем unmanaged-строку из managed-имени ассета
             FixedString64Bytes unmanagedName = new FixedString64Bytes(data.name);
-
+            Debug.Log($"data.name={data.name}");
             // Используем нативный GetHashCode() и кастуем его в беззнаковый uint хэша
             uint configHashName = (uint)unmanagedName.GetHashCode();
+            // ИСПРАВЛЕНО: Детерминированный хэш FNV-1a (работает везде одинаково)
+            //uint configHashName = 2166136261; // Базовое смещение (FNV offset basis)
+            //for (int j = 0; j < unmanagedName.Length; j++)
+            //{
+            //    // Умножаем на прайм-число FNV и смешиваем с байтом символа
+            //    configHashName = (configHashName ^ unmanagedName[j]) * 16777619;
+            //}
 
+            Debug.Log($"[Voxel System]: configHashName={configHashName}");
             // Бежим по всем существующим рантайм-мирам (ServerWorld, ClientWorld, ThinClientWorld)
             foreach (var world in allWorlds)
             {
@@ -138,6 +125,28 @@ public class VoxelModelCacheManager : MonoBehaviour
 
         Debug.Log($"[Voxel System]: Мультимирное запекание завершено. Всего зарегистрировано {registeredModelsCount} unmanaged-шаблонов во всех сетевых инстансах.");
     }
+
+
+    //private void InitializePalette()
+    //{
+    //    _paletteRegistry.Clear();
+
+    //    // Индекс 0 строго зарезервирован под воздух (уничтоженный воксель)
+    //    int currentByteIndex = 1;
+
+    //    for (int i = 0; i < colorPalette.Count; i++)
+    //    {
+    //        // Лимит байта — 255 уникальных цветов в одной палитре
+    //        if (currentByteIndex > 255) break;
+
+    //        Color32 color = colorPalette[i];
+    //        if (!_paletteRegistry.ContainsKey(color))
+    //        {
+    //            _paletteRegistry[color] = (byte)currentByteIndex;
+    //            currentByteIndex++;
+    //        }
+    //    }
+    //}
 }
 
 //using System.Collections.Generic;

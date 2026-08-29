@@ -47,6 +47,16 @@ public partial struct SetupClientSystem : ISystem
             {
                 UnityEngine.Debug.LogError($"[CLIENT] Неверный IP адрес или порт: {targetAddress}:{targetPort}");
             }
+            // ПРАВИЛЬНО: После успешного запуска Listen, принудительно задаем 
+            // конфигурацию тиков сервера, чтобы он не зависел от FPS редактора Unity!
+            if (SystemAPI.TryGetSingletonRW<ClientServerTickRate>(out var tickRate))
+            {
+                //// Настраиваем сервер на стабильные 60 тиков в секунду (или 30, как в вашем проекте)
+                //tickRate.ValueRW.SimulationTickRate = 45;
+                //tickRate.ValueRW.NetworkTickRate = 45;
+
+                tickRate.ValueRW.MaxSimulationStepsPerFrame = 2;
+            }
         }
     }
 }

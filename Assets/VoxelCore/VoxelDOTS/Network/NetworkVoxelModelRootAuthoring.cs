@@ -71,7 +71,7 @@ public class NetworkVoxelModelRootAuthoring : MonoBehaviour
             var safeInitialMass = new PhysicsMass
             {
                 Transform = RigidTransform.identity,
-                InverseMass = 1.0f / 1000.0f, // Задаем условный вес в 1000 кг (1 / масса)
+                InverseMass = 0,//1.0f / 1000.0f, // Задаем условный вес в 1000 кг (1 / масса)
                 InverseInertia = new float3(1.0f, 1.0f, 1.0f), // Безопасный единичный тензор инерции, защищающий от деления на ноль
                 CenterOfMass = float3.zero
             };

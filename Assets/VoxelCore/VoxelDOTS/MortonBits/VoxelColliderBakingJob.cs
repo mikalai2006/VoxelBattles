@@ -5,7 +5,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
 
-[BurstCompile(CompileSynchronously = true)]
+[BurstCompile] //(CompileSynchronously = true)
 public struct GenerateChunkColliderJob : IJob
 {
     [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;

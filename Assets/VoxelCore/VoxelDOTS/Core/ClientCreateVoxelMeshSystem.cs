@@ -155,7 +155,7 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
     }
 
 
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile] //(CompileSynchronously = true)
     public void OnUpdate(ref SystemState state)
     {
         //m_ChunkDataLookup.Update(ref state);

@@ -1,4 +1,5 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode; // Не забываем директиву
@@ -13,24 +14,36 @@ using Unity.Transforms;
 // ====================================================================
 //[UpdateInGroup(typeof(PhysicsSystemGroup))]
 //[UpdateBefore(typeof(PhysicsSimulationGroup))] // Выполняем строго ДО фазы обсчета коллизий
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(PredictedSimulationSystemGroup))]
 [BurstCompile]
 public partial struct AAAMovementSystem : ISystem
 {
+    // Объявляем unmanaged lookup-кэш компонентов для чтения флага активности
+    private ComponentLookup<IsControlledTag> _controlTagLookup;
+
+
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<AAA_MovementComponent>();
         state.RequireForUpdate<NetworkTime>();
 
-        // Теперь система движения не начнет крутить джобы, 
-        // пока в ECS-мире не инициализируется хотя бы один физический индекс!
-        state.RequireForUpdate<PhysicsWorldIndex>();
+        //// Теперь система движения не начнет крутить джобы, 
+        //// пока в ECS-мире не инициализируется хотя бы один физический индекс!
+        //state.RequireForUpdate<PhysicsWorldIndex>();
+
+        // Инициализируем хранилище lookup при создании системы
+        _controlTagLookup = state.GetComponentLookup<IsControlledTag>(true); // true = ReadOnly
+
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        // КРИТИЧЕСКИ ВАЖНО ДЛЯ BURST: Обновляем lookup-данные актуальным состоянием памяти ТЕКУЩЕГО кадра
+        _controlTagLookup.Update(ref state);
+
         float frameDeltaTime = SystemAPI.Time.DeltaTime;
 
         // В вашей версии Netcode просто берем синглтон времени симуляции
@@ -43,10 +56,10 @@ public partial struct AAAMovementSystem : ISystem
         state.Dependency = new MovementParallelJob
         {
             FixedDeltaTime = frameDeltaTime,
-            CurrentTick = currentTick
+            CurrentTick = currentTick,
+
+            ControlTagLookup = _controlTagLookup
         }.ScheduleParallel(state.Dependency);
-
-
     }
 
     [BurstCompile]
@@ -55,16 +68,22 @@ public partial struct AAAMovementSystem : ISystem
         public float FixedDeltaTime;
         public NetworkTick CurrentTick;
 
+        // Внедряем кэш внутрь джобы с атрибутом ReadOnly
+        [ReadOnly] public ComponentLookup<IsControlledTag> ControlTagLookup;
+
         public void Execute(
+            Entity entity,
             GhostInstance ghostInstance,
             ref PhysicsVelocity velocity,
             ref AAA_MovementComponent movement,
             ref LocalTransform transform,
             in DynamicBuffer<InputBufferData<AAA_InputComponent>> inputBuffer,
-            in PhysicsMass mass,
-            in IsControlledTag controlTag)
+            in PhysicsMass mass)
         {
-            bool isCurrentVehicleActive = controlTag.IsActive;
+            // БЕЗОПАСНАЯ И АСИНХРОННАЯ ПРОВЕРКА ДЛЯ NETCODE:
+            // Читаем сетевой флаг из lookup по текущей Entity без вызова структурных конфликтов
+            bool isCurrentVehicleActive = ControlTagLookup.HasComponent(entity) && ControlTagLookup[entity].IsActive;
+            //bool isCurrentVehicleActive = controlTag.IsActive;
             if (!isCurrentVehicleActive || mass.InverseMass == 0f)
             {
                 //velocity.Angular = float3.zero;

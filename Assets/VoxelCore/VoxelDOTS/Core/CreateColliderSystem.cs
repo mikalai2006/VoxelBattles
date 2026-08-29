@@ -97,7 +97,7 @@ public partial struct CreateColliderSystem : ISystem
         // ====================================================================
     }
 
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile]//(CompileSynchronously = true)
     public void OnDestroy(ref SystemState state)
     {
         // Уничтожать контейнеры нужно строго там же, где создавали, чтобы избежать утечек

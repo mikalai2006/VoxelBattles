@@ -44,7 +44,7 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
         _inputBufferLookup.Update(ref state);
 
         // 1. Запрашиваем нативный синглтон фабрики буферов для группы симуляции
-        var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+        var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
 
         // 2. Создаем полностью Burst-совместимый буфер команд одной строчкой!
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);

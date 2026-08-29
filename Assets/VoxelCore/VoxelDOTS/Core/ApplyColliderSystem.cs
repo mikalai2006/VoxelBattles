@@ -272,11 +272,11 @@ public partial class ApplyColliderSystem : SystemBase
         // Получаем синглтон коллайдеров
         var voxelChildColliderRegistrySingleton = SystemAPI.GetSingleton<VoxelChildColliderRegistrySingleton>();
 
-        // Буфер команд
-        //var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+        //// Буфер команд
+        ////var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+        ////var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+        //var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
         //var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
-        var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-        var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
         bool isColliderAssignedToEntity = false;
         try

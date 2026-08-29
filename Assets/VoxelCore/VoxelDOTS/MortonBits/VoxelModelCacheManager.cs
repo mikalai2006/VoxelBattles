@@ -62,7 +62,7 @@ public class VoxelModelCacheManager : MonoBehaviour
 
             // Создаем unmanaged-строку из managed-имени ассета
             FixedString64Bytes unmanagedName = new FixedString64Bytes(data.name);
-            Debug.Log($"data.name={data.name}");
+            //Debug.Log($"data.name={data.name}");
             // Используем нативный GetHashCode() и кастуем его в беззнаковый uint хэша
             uint configHashName = (uint)unmanagedName.GetHashCode();
             // ИСПРАВЛЕНО: Детерминированный хэш FNV-1a (работает везде одинаково)
@@ -73,7 +73,7 @@ public class VoxelModelCacheManager : MonoBehaviour
             //    configHashName = (configHashName ^ unmanagedName[j]) * 16777619;
             //}
 
-            Debug.Log($"[Voxel System]: configHashName={configHashName}");
+            //Debug.Log($"[Voxel System]: configHashName={configHashName}");
             // Бежим по всем существующим рантайм-мирам (ServerWorld, ClientWorld, ThinClientWorld)
             foreach (var world in allWorlds)
             {

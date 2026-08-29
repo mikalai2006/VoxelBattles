@@ -63,7 +63,7 @@ public class InputBridgeSystem : MonoBehaviour
             // _entityManager.SetName(entity, "InputState_Singleton");
         }
 
-        UnityEngine.Debug.Log($"[InputBridge] InputStateSingleton успешно инициализирован в мире: {_targetWorld.Name}!");
+        //UnityEngine.Debug.Log($"[InputBridge] InputStateSingleton успешно инициализирован в мире: {_targetWorld.Name}!");
         _isInitialized = true;
     }
 

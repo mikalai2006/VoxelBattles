@@ -175,6 +175,50 @@ MonoBehaviour:
   PhysicChunkMode: 0
   presetToAssemble: {fileID: 11400000, guid: 3d50bdd205ba7654899934e4edfa32cc, type: 2}
   testSOToAssemble: {fileID: 11400000, guid: ee4381e95ec96b1448ecec72dc71e7ca, type: 2}
+--- !u!1 &583949679
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 583949680}
+  - component: {fileID: 583949681}
+  m_Layer: 0
+  m_Name: AppSettings
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &583949680
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583949679}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &583949681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583949679}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7af222671ec986743b0870da22c4dc37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AppSettings
 --- !u!1 &638167825
 GameObject:
   m_ObjectHideFlags: 0
@@ -829,3 +873,4 @@ SceneRoots:
   - {fileID: 690558731}
   - {fileID: 1338795807}
   - {fileID: 1590293022}
+  - {fileID: 583949680}

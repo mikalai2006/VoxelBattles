@@ -3,7 +3,6 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode; // Не забываем директиву
 using Unity.Physics;
-using Unity.Physics.Systems;
 using Unity.Transforms;
 
 // ====================================================================
@@ -12,8 +11,9 @@ using Unity.Transforms;
 // Теперь мы находимся на одном поле с физическим ядром, и атрибут UpdateBefore
 // легально сможет выстроить порядок выполнения без варнингов в консоли!
 // ====================================================================
-[UpdateInGroup(typeof(PhysicsSystemGroup))]
-[UpdateBefore(typeof(PhysicsSimulationGroup))] // Выполняем строго ДО фазы обсчета коллизий
+//[UpdateInGroup(typeof(PhysicsSystemGroup))]
+//[UpdateBefore(typeof(PhysicsSimulationGroup))] // Выполняем строго ДО фазы обсчета коллизий
+[UpdateInGroup(typeof(PredictedSimulationSystemGroup))]
 [BurstCompile]
 public partial struct AAAMovementSystem : ISystem
 {
@@ -56,6 +56,7 @@ public partial struct AAAMovementSystem : ISystem
         public NetworkTick CurrentTick;
 
         public void Execute(
+            GhostInstance ghostInstance,
             ref PhysicsVelocity velocity,
             ref AAA_MovementComponent movement,
             ref LocalTransform transform,
@@ -64,14 +65,18 @@ public partial struct AAAMovementSystem : ISystem
             in IsControlledTag controlTag)
         {
             bool isCurrentVehicleActive = controlTag.IsActive;
-            if (mass.InverseMass == 0f) return;
+            if (!isCurrentVehicleActive || mass.InverseMass == 0f)
+            {
+                //velocity.Angular = float3.zero;
+                //velocity.Linear = float3.zero;
+                return;
+            }
 
             InputBufferData<AAA_InputComponent> bufferWrapper;
-            if (!isCurrentVehicleActive || !inputBuffer.GetDataAtTick(CurrentTick, out bufferWrapper))
+            if (!inputBuffer.GetDataAtTick(CurrentTick, out bufferWrapper))
             {
                 bufferWrapper = default;
             }
-
             AAA_InputComponent inputData = bufferWrapper.InternalInput;
 
             //if (math.all(inputData.MoveInput == float2.zero)) { return; }

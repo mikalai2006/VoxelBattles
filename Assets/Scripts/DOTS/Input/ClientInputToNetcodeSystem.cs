@@ -60,9 +60,9 @@ public partial struct ClientInputToNetcodeSystem : ISystem
             int nextIdx = (currentIdx + 1) % allMyInstances.Length;
             newGhostId = (uint)allMyInstances[nextIdx].ghostId;
             allMyInstances.Dispose();
-#if UNITY_EDITOR
-            UnityEngine.Debug.Log($"[Client]: Хочу поменять управление с {oldGhostId} на {newGhostId}!");
-#endif
+            //#if UNITY_EDITOR
+            //            UnityEngine.Debug.Log($"[Client]: Хочу поменять управление с {oldGhostId} на {newGhostId}!");
+            //#endif
 
 
             if (newGhostId > 0)

@@ -81,7 +81,7 @@ MonoBehaviour:
   RollbackPredictionOnStructuralChanges: 0
   DefaultGhostMode: 0
   SupportedGhostModes: 3
-  OptimizationMode: 0
+  OptimizationMode: 1
   Importance: 1
   MaxSendRate: 0
   prefabId: 71a1edc5fa9dcc04cbc45d0efc0c710a

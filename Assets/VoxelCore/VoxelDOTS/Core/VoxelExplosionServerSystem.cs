@@ -58,8 +58,6 @@ public partial struct VoxelExplosionServerSystem : ISystem
 
         var em = state.EntityManager;
 
-        UnityEngine.Debug.LogWarning($"[Server]: entities.Length={entities.Length}");
-
         for (int i = 0; i < requests.Length; i++)
         {
             var req = requests[i];

@@ -18,14 +18,14 @@ public struct ReplyMaskToClientRpc : IRpcCommand
 {
     public uint GhostId;
     public FixedList512Bytes<byte> CompressedBytes;
-    public FixedList512Bytes<byte> CompressedBytes2;
-    public FixedList512Bytes<byte> CompressedBytes3;
-    public FixedList512Bytes<byte> CompressedBytes4;
-    public FixedList512Bytes<byte> CompressedBytes5;
-    public FixedList512Bytes<byte> CompressedBytes6;
-    public FixedList512Bytes<byte> CompressedBytes7;
-    public FixedList512Bytes<byte> CompressedBytes8;
-    public FixedList512Bytes<byte> CompressedBytes9;
+    //public FixedList512Bytes<byte> CompressedBytes2;
+    //public FixedList512Bytes<byte> CompressedBytes3;
+    //public FixedList512Bytes<byte> CompressedBytes4;
+    //public FixedList512Bytes<byte> CompressedBytes5;
+    //public FixedList512Bytes<byte> CompressedBytes6;
+    //public FixedList512Bytes<byte> CompressedBytes7;
+    //public FixedList512Bytes<byte> CompressedBytes8;
+    //public FixedList512Bytes<byte> CompressedBytes9;
 }
 
 

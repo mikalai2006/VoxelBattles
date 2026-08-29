@@ -324,7 +324,7 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
             meshData.SetSubMesh(0, new SubMeshDescriptor(0, indexCount) { topology = MeshTopology.Triangles, vertexCount = vertexCount }, MeshUpdateFlags.DontRecalculateBounds);
 
 
-            UnityEngine.Debug.LogWarning($"[Client]: Render Mesh #{nextMeshId}");
+            //UnityEngine.Debug.LogWarning($"[Client]: Render Mesh #{nextMeshId}");
             // Заливаем данные в СВЕЖИЙ меш
             Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, runtimeMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontValidateLodRanges | MeshUpdateFlags.DontRecalculateBounds);
             runtimeMesh.RecalculateBounds();

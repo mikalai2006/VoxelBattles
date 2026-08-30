@@ -1,8 +1,7 @@
+#if !UNITY_SERVER
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
-public struct VisualsReplyMaskTag : IComponentData { }
-
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct ClientHandleMaskReplySystem : ISystem
@@ -120,3 +119,4 @@ public partial struct ClientHandleMaskReplySystem : ISystem
         ecb.Dispose();
     }
 }
+#endif

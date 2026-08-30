@@ -1,3 +1,4 @@
+#if !UNITY_SERVER
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
@@ -533,3 +534,4 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
         }
     }
 }
+#endif

@@ -1,3 +1,4 @@
+
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -13,8 +14,8 @@ public class TestPoolEntity : MonoBehaviour
     public int poolSize = 100;
     public Vector3Int maxModelBounds = new Vector3Int(32, 32, 32);
 
-    [Header("Модели для спавна")]
-    public List<SOVoxelData> modelsToSpawn;
+    //[Header("Модели для спавна")]
+    //public List<SOVoxelData> modelsToSpawn;
 
     [Header("Параметры сетки спавна")]
     public int rows = 5;
@@ -29,7 +30,7 @@ public class TestPoolEntity : MonoBehaviour
     //[SerializeField] private int countCreate = 0;
     //[SerializeField] private int countRemove = 0;
 
-    private bool _isInitialized = false;
+    [SerializeField] private bool _isInitialized = false;
     //private PhysicsVoxelPoolSystem _poolPhysicsSystem;
     private VoxelModelCacheManager _cacheManager;
 
@@ -44,7 +45,7 @@ public class TestPoolEntity : MonoBehaviour
     private List<Entity> _activeEntities = new List<Entity>();
 
     private InputSystem_Actions inputActions;
-
+#if !UNITY_SERVER
     private void Start()
     {
         if (_isInitialized) return;
@@ -61,16 +62,17 @@ public class TestPoolEntity : MonoBehaviour
         inputActions.Player.Interact1.performed -= TestSpawn;
         inputActions.Player.Interact1.Disable();
     }
-
+    
+#endif
     private IEnumerator WaitForBakingAndInitialize()
     {
         if (_isInitialized) yield break;
 
-        if (modelsToSpawn == null || modelsToSpawn.Count == 0)
-        {
-            Debug.LogError("[Voxel Test]: Список modelsToSpawn пуст!");
-            yield break;
-        }
+        //if (modelsToSpawn == null || modelsToSpawn.Count == 0)
+        //{
+        //    Debug.LogError("[Voxel Test]: Список modelsToSpawn пуст!");
+        //    yield break;
+        //}
 
         World world = World.DefaultGameObjectInjectionWorld;
         while (world == null)
@@ -80,30 +82,30 @@ public class TestPoolEntity : MonoBehaviour
             yield return null;
         }
 
-        EntityManager em = world.EntityManager;
-        EntityQuery configQuery = em.CreateEntityQuery(ComponentType.ReadOnly<VoxelGlobalConfigComponent>());
+        //EntityManager em = world.EntityManager;
+        //EntityQuery configQuery = em.CreateEntityQuery(ComponentType.ReadOnly<VoxelGlobalConfigComponent>());
 
-        while (configQuery.CalculateEntityCount() == 0)
-        {
-            Debug.LogWarning("[Voxel Test]: ConfigQuery count = 0!");
-            yield return null;
-        }
+        //while (configQuery.CalculateEntityCount() == 0)
+        //{
+        //    Debug.LogWarning("[Voxel Test]: ConfigQuery count = 0!");
+        //    yield return null;
+        //}
 
-        var configEntities = configQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
-        Entity configEntity = configEntities[0];
-        if (configEntity == null)
-        {
-            Debug.LogError("[Voxel Test]: VoxelGlobalConfigComponent не найден!");
-            yield break; // Выход из корутины (ее остановка)
-        }
-        configEntities.Dispose();
+        //var configEntities = configQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+        //Entity configEntity = configEntities[0];
+        //if (configEntity == null)
+        //{
+        //    Debug.LogError("[Voxel Test]: VoxelGlobalConfigComponent не найден!");
+        //    yield break; // Выход из корутины (ее остановка)
+        //}
+        //configEntities.Dispose();
 
-        var config = em.GetComponentObject<VoxelGlobalConfigComponent>(configEntity);
-        while (config.OpaqueMaterial == null || config.TransparentMaterial == null)
-        {
-            Debug.LogWarning("[Voxel Test]: Материалы или один из них не найдены!");
-            yield return null;
-        }
+        //var config = em.GetComponentObject<VoxelGlobalConfigComponent>(configEntity);
+        //while (config.OpaqueMaterial == null || config.TransparentMaterial == null)
+        //{
+        //    Debug.LogWarning("[Voxel Test]: Материалы или один из них не найдены!");
+        //    yield return null;
+        //}
 
         // Кэшируем ссылки на пул и кэш Блобов для последующих кликов
         //_poolPhysicsSystem = world.GetExistingSystemManaged<PhysicsVoxelPoolSystem>();
@@ -507,4 +509,3 @@ public class TestPoolEntity : MonoBehaviour
 
 
 }
-

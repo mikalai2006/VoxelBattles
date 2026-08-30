@@ -1,3 +1,4 @@
+#if !UNITY_SERVER
 using Unity.Entities;
 using Unity.Rendering;
 using UnityEngine;
@@ -58,3 +59,4 @@ public partial class ClientVoxelBrgInitializationSystem : SystemBase
         }
     }
 }
+#endif

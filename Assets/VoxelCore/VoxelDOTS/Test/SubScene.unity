@@ -1168,7 +1168,7 @@ MonoBehaviour:
     y: -9.81
     z: -0
   m_SubstepCount: 2
-  m_SolverIterationCount: 2
+  m_SolverIterationCount: 4
   m_EnableSolverStabilizationHeuristic: 0
   m_MultiThreaded: 1
   m_CollisionTolerance: 0.01

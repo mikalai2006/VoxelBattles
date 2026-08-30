@@ -1,3 +1,4 @@
+
 using System.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -9,18 +10,20 @@ public class InputBridgeSystem : MonoBehaviour
     private EntityQuery _inputQuery;
     private EntityManager _entityManager;
     private World _targetWorld;
+    [SerializeField] private string _targetWorldName;
 
     private Vector2 _moveInput;
     private bool _switchTriggered;
-    private bool _isInitialized = false;
+    [SerializeField] private bool _isInitialized = false;
 
     private void Awake() => _gameInput = new InputSystem_Actions();
 
     private void Start()
     {
         //if (_isInitialized) return;
-
+#if !UNITY_SERVER
         StartCoroutine(WaitForInitialize());
+#endif
     }
 
     private IEnumerator WaitForInitialize()
@@ -39,6 +42,8 @@ public class InputBridgeSystem : MonoBehaviour
                 if (world.IsClient() && !world.Name.Contains("ThinClient"))
                 {
                     _targetWorld = world;
+                    _targetWorldName = world.Name;
+                    UnityEngine.Debug.Log($"[InputBridge] Connect to {_targetWorldName}...");
                     break;
                 }
             }
@@ -46,7 +51,7 @@ public class InputBridgeSystem : MonoBehaviour
             // ≈сли на этом кадре мир не найден Ч ждем один кадр и провер€ем снова
             if (_targetWorld == null || !_targetWorld.IsCreated)
             {
-                UnityEngine.Debug.LogWarning("[InputBridge] ќжидание по€влени€ активного  лиентского ECS-миров...");
+                UnityEngine.Debug.LogWarning("[InputBridge] Wait client...");
                 yield return null; // ѕропускаем кадр и возвращаемс€ в начало цикла while
             }
         }

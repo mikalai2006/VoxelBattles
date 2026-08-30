@@ -147,7 +147,7 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             //ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkEntity, false);
             ////ecb.SetComponentEnabled<ChunkGraphicsFlushTag>(chunkEntity, false);
 
-            ecb.SetComponentEnabled<ChunkMeshNeedCreate>(chunkEntity, true);
+            //ecb.SetComponentEnabled<ChunkMeshNeedCreate>(chunkEntity, true);
             ecb.SetComponentEnabled<ChunkColliderNeedCreate>(chunkEntity, true);
 
             // Внедряем компонент Parent, связывая чанк с корнем машины

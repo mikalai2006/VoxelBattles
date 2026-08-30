@@ -1,15 +1,12 @@
+#if !UNITY_SERVER
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.NetCode;
-using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
-
-public struct ChunkMeshNeedCreate : IComponentData, IEnableableComponent { }
-public struct ChunkMeshNeedApply : IComponentData, IEnableableComponent { }
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 [UpdateInGroup(typeof(InitializationSystemGroup))]
@@ -408,3 +405,4 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
 //        Ecb.SetComponent(chunkIndex, entity, new ChunkBakeStatusComponent { IsReady = true });
 //    }
 //}
+#endif

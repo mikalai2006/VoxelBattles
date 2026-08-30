@@ -1,3 +1,4 @@
+using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 
@@ -9,9 +10,25 @@ public class MyGameSpecificBootstrap : ClientServerBootstrap
         // Отключаем автоподключение из редактора для билдов
         AutoConnectPort = 0;
 
+#if UNITY_EDITOR
         CreateClientWorld(defaultWorldName + "_Client");
         CreateServerWorld(defaultWorldName + "_Server");
-        //return false;
+#else
+#if !UNITY_SERVER
+            CreateClientWorld(defaultWorldName + "_Client");
+#else
+            CreateServerWorld(defaultWorldName + "_Server");
+#endif
+        // Возвращаем TRUE, сообщая Unity: "Мы сами вручную создали нужные миры!"
+        // Но теперь нам обязательно нужно назначить главный мир, чтобы Unity не падала:
+        if (World.DefaultGameObjectInjectionWorld == null)
+        {
+            // Назначаем главным миром тот, который создался (серверный или клиентский)
+            World.DefaultGameObjectInjectionWorld = ServerWorld ?? ClientWorld;
+        }
+#endif
+
+
 
         //// 1. Создаем пустой базовый мир для инициализации систем Unity
         //var defaultWorld = new World(defaultWorldName);
@@ -24,9 +41,16 @@ public class MyGameSpecificBootstrap : ClientServerBootstrap
         //// 3. Важно: мы НЕ вызываем здесь Netcode-инициализацию миров клиента и сервера.
         //// Мы оставляем этот базовый мир пустым от сетевой логики.
 
+        string worldNames = "";
+        for (int i = 0; i < World.All.Count; i++)
+        {
+            worldNames += World.All[i].Name + (World.All.Count - 1 == i ? "" : ",");
+        }
+
         //Debug.Log("Базовый DOTS-мир успешно создан. Авто-инициализация Netcode заблокирована.");
         //CreateLocalWorld(defaultWorldName);
-        Debug.Log("[ClientServerBootstrap] Инициализация сетевых миров отменена...");
+        Debug.Log($"[ClientServerBootstrap] Выполнена пользовательская инициализация миров {worldNames}...");
+
 
         // Возвращаем true — мы сами настроили DefaultGameObjectInjectionWorld
         return true;
@@ -59,6 +83,16 @@ public class NetcodeBootstrapper : MonoBehaviour
             ConfigurePacketBatching();
             StartClient();
         }
+    }
+
+    private void Start()
+    {
+#if !UNITY_SERVER
+        //StartClient();
+#else
+        StartServer();
+#endif
+
     }
 
     private void ConfigurePacketBatching()

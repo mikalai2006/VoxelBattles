@@ -47,16 +47,22 @@ public partial struct SetupClientSystem : ISystem
             {
                 UnityEngine.Debug.LogError($"[CLIENT] Неверный IP адрес или порт: {targetAddress}:{targetPort}");
             }
-            // ПРАВИЛЬНО: После успешного запуска Listen, принудительно задаем 
-            // конфигурацию тиков сервера, чтобы он не зависел от FPS редактора Unity!
-            if (SystemAPI.TryGetSingletonRW<ClientServerTickRate>(out var tickRate))
-            {
-                //// Настраиваем сервер на стабильные 60 тиков в секунду (или 30, как в вашем проекте)
-                //tickRate.ValueRW.SimulationTickRate = 45;
-                //tickRate.ValueRW.NetworkTickRate = 45;
+            //            // ПРАВИЛЬНО: После успешного запуска Listen, принудительно задаем 
+            //            // конфигурацию тиков сервера, чтобы он не зависел от FPS редактора Unity!
+            //            if (SystemAPI.TryGetSingletonRW<ClientServerTickRate>(out var tickRate))
+            //            {
+            //                // Настраиваем сервер на стабильные 60 тиков в секунду (или 30, как в вашем проекте)
 
-                tickRate.ValueRW.MaxSimulationStepsPerFrame = 2;
-            }
+            //#if UNITY_SERVER
+            //        tickRate.ValueRW.SimulationTickRate = 30;
+            //                tickRate.ValueRW.NetworkTickRate = 30;
+            //#else
+            //                tickRate.ValueRW.SimulationTickRate = 60;
+            //                tickRate.ValueRW.NetworkTickRate = 60;
+            //#endif
+
+            //                tickRate.ValueRW.MaxSimulationStepsPerFrame = 2;
+            //            }
         }
     }
 }

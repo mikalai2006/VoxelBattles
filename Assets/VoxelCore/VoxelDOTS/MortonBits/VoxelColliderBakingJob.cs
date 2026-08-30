@@ -60,11 +60,18 @@ public struct GenerateChunkColliderJob : IJob
         }
 
         // Запекаем сжатый физический коллайдер на сервере
-        OutputColliderBlob[0] = Unity.Physics.MeshCollider.Create(
-            vertices.AsArray(),
-            triangles.AsArray(),
-            CollisionFilter.Default
-        );
+        var boxGeometry = new BoxGeometry
+        {
+            Center = new float3(16, 16, 16),
+            Size = new float3(32, 32, 32),
+            Orientation = quaternion.identity
+        };
+        OutputColliderBlob[0] = Unity.Physics.BoxCollider.Create(boxGeometry);
+        //    OutputColliderBlob[0] = Unity.Physics.MeshCollider.Create(
+        //    vertices.AsArray(),
+        //    triangles.AsArray(),
+        //    CollisionFilter.Default
+        //);
 
         JobCountersRef[0] = new int3(vertices.Length, triangles.Length, 1);
 

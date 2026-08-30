@@ -1,6 +1,8 @@
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
+using Unity.Physics;
 
 public struct RequestVehicleSwitchRpc : IRpcCommand
 {
@@ -96,6 +98,21 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
             {
                 ecb.SetComponent(oldVehicleEntity, new IsControlledTag { IsActive = false });
                 ecb.SetComponent(oldVehicleEntity, new GhostOwner { NetworkId = -1 });
+                if (SystemAPI.HasComponent<PhysicsCollider>(oldVehicleEntity))
+                {
+                    // Создаем полностью кинематическую массу (все инвертированные значения равны 0)
+                    var kinematicMass = new PhysicsMass
+                    {
+                        InverseMass = 0f,
+                        InverseInertia = float3.zero,
+                        InertiaOrientation = quaternion.identity,
+                        CenterOfMass = float3.zero
+                    };
+
+                    // Применяем изменения
+                    state.EntityManager.SetComponentData(oldVehicleEntity, kinematicMass);
+                    ecb.SetComponent(oldVehicleEntity, kinematicMass);
+                }
 
                 // БЕЗОПАСНАЯ ОЧИСТКА БУФЕРА ДЛЯ BURST (Замена state.EntityManager.HasBuffer):
                 if (_inputBufferLookup.HasBuffer(oldVehicleEntity))
@@ -109,6 +126,28 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
             {
                 ecb.SetComponent(targetVehicleEntity, new IsControlledTag { IsActive = true });
                 ecb.SetComponent(targetVehicleEntity, new GhostOwner { NetworkId = clientNetworkId });
+
+                if (SystemAPI.HasComponent<PhysicsCollider>(targetVehicleEntity))
+                {
+                    int realVehicleMass = 1000;
+
+                    var collider = SystemAPI.GetComponent<PhysicsCollider>(targetVehicleEntity);
+
+                    var massProperties = collider.MassProperties;
+
+                    float3 inertia = massProperties.MassDistribution.InertiaTensor;
+
+                    if (inertia.x <= 0f || inertia.y <= 0f || inertia.z <= 0f)
+                    {
+                        massProperties = MassProperties.UnitSphere;
+                    }
+
+                    var dynamicMass = PhysicsMass.CreateDynamic(massProperties, realVehicleMass);
+                    dynamicMass.CenterOfMass = float3.zero;
+
+                    // 3. Записываем ее через ECB
+                    ecb.SetComponent(targetVehicleEntity, dynamicMass);
+                }
             }
 
             ecb.DestroyEntity(rpcEntity);

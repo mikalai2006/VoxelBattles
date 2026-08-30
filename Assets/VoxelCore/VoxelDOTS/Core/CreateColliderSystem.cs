@@ -51,8 +51,9 @@ public partial struct CreateColliderSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GlobalVoxelModelCache>();
+#if !UNITY_SERVER
         state.RequireForUpdate<VoxelGlobalConfigComponent>();
-
+#endif
         // Создаем сущность-синглтон и записываем туда ссылки
         if (state.World.IsClient() || state.World.IsServer())
         {

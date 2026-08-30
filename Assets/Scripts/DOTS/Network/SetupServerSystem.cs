@@ -37,14 +37,42 @@ public partial struct SetupServerSystem : ISystem
             // конфигурацию тиков сервера, чтобы он не зависел от FPS редактора Unity!
             if (SystemAPI.TryGetSingletonRW<ClientServerTickRate>(out var tickRate))
             {
-                //// Настраиваем сервер на стабильные 60 тиков в секунду (или 30, как в вашем проекте)
-                //tickRate.ValueRW.SimulationTickRate = 45;
-                //tickRate.ValueRW.NetworkTickRate = 45;
+                // Создаем конфигурацию тиков
+                var tickRateConfig = new ClientServerTickRate
+                {
+                    // Режим ожидания: BusyWait идеален для серверов, чтобы контролировать тайминги
+                    //#if UNITY_SERVER
+                    //                    TargetFrameRateMode = ClientServerTickRate.FrameRateMode.Sleep
+                    //#else
+                    //                    TargetFrameRateMode = ClientServerTickRate.FrameRateMode.BusyWait
+                    //#endif
+                    // 1. Частота логики сервера (60 тиков в секунду)
+                    SimulationTickRate = 60,
 
-                //// КРИТИЧЕСКИЙ ФИКС: Отключаем батчинг пакетов на транспортном уровне, 
-                //// если сервер работает локально в редакторе (в режиме Multiplayer Play Mode)
-                //tickRate.ValueRW.MaxSimulationStepBatchSize = 1;
-                tickRate.ValueRW.MaxSimulationStepsPerFrame = 2;
+
+                    // 2. Частота отправки пакетов в сеть (10 раз в секунду)
+                    // Сервер будет пропускать по 5 кадров симуляции перед отправкой пакета!
+                    NetworkTickRate = 10,
+
+                    // Ограничение: сколько тиков сервер может обработать ЗА ОДИН кадр,
+                    // если он вдруг начнет лагать (защита от "спирали смерти"). 
+                    MaxSimulationStepsPerFrame = 2,
+                    MaxSimulationStepBatchSize = 2,
+
+                };
+                tickRate.ValueRW = tickRateConfig;
+                //                //// Настраиваем сервер на стабильные 60 тиков в секунду (или 30, как в вашем проекте)
+                //#if UNITY_SERVER
+                //                tickRate.ValueRW.SimulationTickRate = 30;
+                //                tickRate.ValueRW.NetworkTickRate = 30;
+                //#else
+                //                tickRate.ValueRW.SimulationTickRate = 60;
+                //                tickRate.ValueRW.NetworkTickRate = 60;
+                //#endif
+                //                //// КРИТИЧЕСКИЙ ФИКС: Отключаем батчинг пакетов на транспортном уровне, 
+                //                //// если сервер работает локально в редакторе (в режиме Multiplayer Play Mode)
+                //                //tickRate.ValueRW.MaxSimulationStepBatchSize = 1;
+                //                tickRate.ValueRW.MaxSimulationStepsPerFrame = 2;
             }
 
             // Удаляем сущность инициализации, чтобы не запускать сервер каждый кадр

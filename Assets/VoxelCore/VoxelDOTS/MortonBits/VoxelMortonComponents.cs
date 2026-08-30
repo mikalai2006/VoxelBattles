@@ -4,6 +4,11 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Physics;
 
+
+public struct VisualsReplyMaskTag : IComponentData { }
+public struct ChunkMeshNeedCreate : IComponentData, IEnableableComponent { }
+public struct ChunkMeshNeedApply : IComponentData, IEnableableComponent { }
+
 // ’эш модели, чтобы загл€нуть в GlobalVoxelModelCache
 public struct VoxelModelHeader : IComponentData
 {

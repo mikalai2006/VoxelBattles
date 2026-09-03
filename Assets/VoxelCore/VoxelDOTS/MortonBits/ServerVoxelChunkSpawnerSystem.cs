@@ -141,7 +141,6 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             //    maskBuffer.Add(new LocalChunkDestructionMask { Value = 0xFFFFFFFFFFFFFFFFUL });
             //}
 
-
             //// 5. Спавни чанки сразу активными и взводим тег рендеринга
             //ecb.SetComponentEnabled<ChunkActiveState>(chunkEntity, false);
             //ecb.SetComponentEnabled<ChunkPhysicsActiveState>(chunkEntity, false);

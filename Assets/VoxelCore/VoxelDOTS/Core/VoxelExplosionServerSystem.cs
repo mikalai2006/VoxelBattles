@@ -443,6 +443,8 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                         // Если параметр TargetConnection пустой (Entity.Null), Netcode автоматически 
                                         // разошлет эту команду ВСЕМ клиентам (Broadcast) ровно одним пакетом.
                                         state.EntityManager.AddComponentData(rpcEntity, new SendRpcCommandRequest { TargetConnection = Entity.Null });
+
+                                        //ecb.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
                                     }
 
 
@@ -467,7 +469,7 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                     //{
                                     //}
                                     //state.EntityManager.SetComponentEnabled<ChunkMeshNeedCreate>(hitChunkEntity, true);
-                                    state.EntityManager.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
+                                    //state.EntityManager.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
 
                                 }
                             }

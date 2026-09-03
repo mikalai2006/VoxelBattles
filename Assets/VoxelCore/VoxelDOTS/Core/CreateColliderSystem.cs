@@ -113,18 +113,20 @@ public partial struct CreateColliderSystem : ISystem
                 for (int i = 0; i < markers.Length; i++)
                 {
                     var marker = markers[i];
-                    if (marker.SafeColliderBlob.IsCreated)
-                    {
-                        for (int y = 0; y < marker.SafeColliderBlob.Length; y++)
-                        {
-                            if (marker.SafeColliderBlob[y].IsCreated)
-                            {
-                                marker.SafeColliderBlob[y].Dispose();
-                            }
-                        }
-                    }
-                    marker.SafeColliderBlob.Dispose();
+                    //if (marker.SafeColliderBlob.IsCreated)
+                    //{
+                    //    for (int y = 0; y < marker.SafeColliderBlob.Length; y++)
+                    //    {
+                    //        if (marker.SafeColliderBlob[y].IsCreated)
+                    //        {
+                    //            marker.SafeColliderBlob[y].Dispose();
+                    //        }
+                    //    }
+                    //}
+                    //marker.SafeColliderBlob.Dispose();
+
                     if (marker.SafeStatus.IsCreated) marker.SafeStatus.Dispose();
+                    if (marker.GeometryArray.IsCreated) marker.GeometryArray.Dispose();
                 }
                 markers.Dispose();
                 // Теперь безопасно удаляем саму хэш-мапу
@@ -282,19 +284,31 @@ public partial struct CreateColliderSystem : ISystem
             //m_ChunkColliderNeedCreate.SetComponentEnabled(entity, false);
             SystemAPI.SetComponentEnabled<ChunkColliderNeedCreate>(entity, false);
 
-            var singleChunkStatus = new NativeArray<int3>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            var singleChunkStatus = new NativeArray<int3>(3, Allocator.Persistent, NativeArrayOptions.ClearMemory);
 
             // Выделяем массив для блоба коллайдера
-            var singleChunkColliderBlob = new NativeArray<BlobAssetReference<Unity.Physics.Collider>>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            //var singleChunkColliderBlob = new NativeArray<BlobAssetReference<Unity.Physics.Collider>>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            var outputGeomArray = new NativeArray<BoxGeometry>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
 
             // 2. Планируем джобу выпекания MeshCollider для этого чанка
-            var colliderJob = new GenerateChunkColliderJob
+            //var colliderJob = new GenerateChunkColliderJob
+            //{
+            //    LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
+            //    OutputColliderBlob = singleChunkColliderBlob,
+            //    JobCountersRef = singleChunkStatus,
+            //    FlattenedModelColors = template.FlattenedLinearColors,
+            //    ChunkOffsetInFlattenedArray = chunkOffset,
+            //};
+            var colliderJob = new FindVoxelModelBoundsJob
             {
-                LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
-                OutputColliderBlob = singleChunkColliderBlob,
-                JobCountersRef = singleChunkStatus,
+                //ChunkCoordToOrderIndexMap = template.ChunkCoordToOrderIndexMap,
+                //SizeModel = template.SizeModel,
                 FlattenedModelColors = template.FlattenedLinearColors,
+                LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
                 ChunkOffsetInFlattenedArray = chunkOffset,
+                VoxelScale = 1,
+                OutputBoxGeometry = outputGeomArray,
+                JobStatusRef = singleChunkStatus,
             };
 
             JobHandle chunkColliderHandle = colliderJob.Schedule(state.Dependency);
@@ -351,17 +365,21 @@ public partial struct CreateColliderSystem : ISystem
 
             if (voxelChildColliderRegistrySingleton.Registry.TryGetValue(entity, out var oldBlob))
             {
-                if (oldBlob.SafeColliderBlob.IsCreated)
+                //if (oldBlob.SafeColliderBlob.IsCreated)
+                //{
+                //    //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
+                //    for (int x = 0; x < oldBlob.SafeColliderBlob.Length; x++)
+                //    {
+                //        if (oldBlob.SafeColliderBlob[x].IsCreated)
+                //        {
+                //            oldBlob.SafeColliderBlob[x].Dispose();
+                //        }
+                //    }
+                //    oldBlob.SafeColliderBlob.Dispose();
+                //}
+                if (oldBlob.GeometryArray.IsCreated)
                 {
-                    //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
-                    for (int x = 0; x < oldBlob.SafeColliderBlob.Length; x++)
-                    {
-                        if (oldBlob.SafeColliderBlob[x].IsCreated)
-                        {
-                            oldBlob.SafeColliderBlob[x].Dispose();
-                        }
-                    }
-                    oldBlob.SafeColliderBlob.Dispose();
+                    oldBlob.GeometryArray.Dispose();
                 }
 
                 if (oldBlob.SafeStatus.IsCreated)
@@ -373,7 +391,8 @@ public partial struct CreateColliderSystem : ISystem
             // добавляем коллайдер чанка
             voxelChildColliderRegistrySingleton.Registry[entity] = new ChunkColliderData
             {
-                SafeColliderBlob = singleChunkColliderBlob,
+                //SafeColliderBlob = singleChunkColliderBlob,
+                GeometryArray = outputGeomArray,
                 SafeStatus = singleChunkStatus,
                 RootVehicleEntity = rootVehicleEntity,
 
@@ -383,6 +402,11 @@ public partial struct CreateColliderSystem : ISystem
                 //HasGraphicsBefore = hasGraphics,
                 index = chunkIndex.Value
             };
+
+
+            var isClient = state.WorldUnmanaged.IsClient();
+            string textWorld = isClient ? "Client" : "Server";
+            //UnityEngine.Debug.Log($"[{textWorld}] Create collider ");
 
             //m_ChunkColliderDataLookup.SetComponentEnabled(entity, true);
 

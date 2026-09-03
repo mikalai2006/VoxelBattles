@@ -159,8 +159,9 @@ public partial class ApplyColliderSystem : SystemBase
         for (int i = 0; i < totalReadyCount; i++)
         {
             var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
-            int3 finalCounts = dataFromSingleton.SafeStatus[0];
-            if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
+            //int3 finalCounts = dataFromSingleton.SafeStatus[0];
+            //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
+            if (dataFromSingleton.GeometryArray.IsCreated)
             {
                 validCollidersCount++;
             }
@@ -177,15 +178,20 @@ public partial class ApplyColliderSystem : SystemBase
             for (int i = 0; i < totalReadyCount; i++)
             {
                 var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
-                int3 finalCounts = dataFromSingleton.SafeStatus[0];
-                if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
+                //int3 finalCounts = dataFromSingleton.SafeStatus[0];
+                //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
+                if (dataFromSingleton.GeometryArray.IsCreated)
                 {
+                    // Создаем BlobAssetReference на главном потоке (быстрая операция)
+                    BlobAssetReference<Unity.Physics.Collider> newColliderBlob = Unity.Physics.BoxCollider.Create(dataFromSingleton.GeometryArray[0]);
+
                     compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
                     {
-                        Collider = dataFromSingleton.SafeColliderBlob[0], //chunksDataArray[i].SafeColliderBlob[0],
+                        Collider = newColliderBlob, // dataFromSingleton.SafeColliderBlob[0], //chunksDataArray[i].SafeColliderBlob[0],
                         CompoundFromChild = new RigidTransform(quaternion.identity, dataFromSingleton.LocalOffsetWithPivot),//childOffsetsList[i]
                         Entity = chunksDataArray[i].TargetEntity
                     };
+
                     currentInstanceIdx++;
                 }
             }
@@ -195,6 +201,15 @@ public partial class ApplyColliderSystem : SystemBase
                 finalVehicleCompoundCollider = CompoundCollider.Create(compoundInstances);
             }
 
+            // 3. ИСПРАВЛЕНИЕ УТЕЧКИ: Проходим по массиву и уничтожаем оригинальные временные Blob-активы чанков
+            for (int i = 0; i < compoundInstances.Length; i++)
+            {
+                if (compoundInstances[i].Collider.IsCreated)
+                {
+                    // Освобождаем неуправляемую память каждого дочернего кубика
+                    compoundInstances[i].Collider.Dispose();
+                }
+            }
             compoundInstances.Dispose();
         }
 
@@ -255,7 +270,6 @@ public partial class ApplyColliderSystem : SystemBase
             voxelChildColliderRegistrySingleton.DisposeList.Clear(); // Обнуляем длину списка для следующего кадра
         }
     }
-
 
 
     // ЭТОТ МЕТОД ВЫПОЛНЯЕТСЯ В MANAGED РЕЖИМЕ БЕЗ КОНФЛИКТОВ С BURST

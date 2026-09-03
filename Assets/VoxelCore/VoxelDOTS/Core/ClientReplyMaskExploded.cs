@@ -55,10 +55,10 @@ public partial struct ClientHandleMaskReplySystem : ISystem
                         UnityEngine.Debug.Log($"[Client]: Reply: Меняем маску разрушений для ghostId={ghostInstanceComponents[i].ghostId}[{replyGhostId}]!");
 #endif
                         // Помечаем этот конкретный чанк тегом для обновления меша/коллайдера
-                        ecb.AddComponent<VisualsReplyMaskTag>(foundChunkEntity);
+                        //ecb.AddComponent<VisualsReplyMaskTag>(foundChunkEntity);
 
                         ecb.SetComponentEnabled<ChunkMeshNeedCreate>(foundChunkEntity, true);
-                        ecb.SetComponentEnabled<ChunkColliderNeedCreate>(foundChunkEntity, true);
+                        //ecb.SetComponentEnabled<ChunkColliderNeedCreate>(foundChunkEntity, true);
                     }
 
                     // Убираем break! Цикл пойдет дальше и найдет следующие чанки с этим же хэшем

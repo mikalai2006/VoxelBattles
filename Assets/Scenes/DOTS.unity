@@ -638,7 +638,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ce98767b6613c54bb5b44c3e6806594, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VoxelClickDestroyer
-  destructionRadius: 15
+  destructionRadius: 10
   _mainCamera: {fileID: 660498935}
 --- !u!1 &931557308
 GameObject:

@@ -832,7 +832,7 @@ PlayerSettings:
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
     Android: UNITY_PHYSICS_CUSTOM;ENABLE_UNITY_PHYSICS_RUNTIME_DEBUG_DISPLAY
-    Standalone: UNITY_PHYSICS_CUSTOM;UNITY_PHYSICS_DISABLE_INTEGRITY_CHECKS
+    Standalone: UNITY_PHYSICS_CUSTOM;UNITY_PHYSICS_DISABLE_INTEGRITY_CHECKS;ENABLE_UNITY_PHYSICS_RUNTIME_DEBUG_DISPLAY
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

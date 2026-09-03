@@ -102,7 +102,8 @@ public struct VoxelColliderCleanupMarker //: IComponentData //, ICleanupComponen
 public struct ChunkColliderData //: IComponentData //, IEnableableComponent
 {
     public NativeArray<int3> SafeStatus;
-    public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
+    //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
+    public NativeArray<BoxGeometry> GeometryArray;
 
     public Entity RootVehicleEntity;
     public float3 LocalOffsetWithPivot;

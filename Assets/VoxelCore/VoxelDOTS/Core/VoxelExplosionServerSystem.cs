@@ -173,13 +173,6 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                 );
 
                                 // ====================================================================
-                                // ГАРАНТИРОВАННЫЙ ЛОКАЛЬНЫЙ ЦЕНТР ВНУТРИ ЧАНКА [0..31]
-                                // ====================================================================
-                                // Остаток от деления на 32 для положительных чисел — это побитовое И с числом 31 (& 31)
-                                // Это физически не позволит centerVoxel выйти за пределы диапазона от 0 до 31!
-                                int3 centerVoxel = globalVoxelPos & 31;
-
-                                // ====================================================================
                                 // 4. ПОИСК СУЩНОСТИ ЧАНКА ПО ДЕТЯМ РОДИТЕЛЯ (Через ChunkIndexComponent)
                                 // ====================================================================
                                 if (em.HasComponent<Child>(rootVehicleEntity))
@@ -207,64 +200,128 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                     }
                                 }
 
+                                // ====================================================================
+                                // ГАРАНТИРОВАННЫЙ ЛОКАЛЬНЫЙ ЦЕНТР ВНУТРИ ЧАНКА [0..31]
+                                // ====================================================================
+                                // Остаток от деления на 32 для положительных чисел — это побитовое И с числом 31 (& 31)
+                                // Это физически не позволит centerVoxel выйти за пределы диапазона от 0 до 31!
+                                int3 centerVoxel = globalVoxelPos & 31;
+
 
                                 // ====================================================================
                                 // ОТПРАВКА ЗАПРОСА И АКТИВАЦИЯ ТЕГА
                                 // ====================================================================
                                 if (hitChunkEntity != Entity.Null && em.HasComponent<LocalChunkDestructionMask>(hitChunkEntity))
                                 {
-                                    int totalVoxels = 0;
-                                    int totalDestroyedVoxels = 0;
+                                    //int totalVoxels = 0;
+                                    //int totalDestroyedVoxels = 0;
                                     bool hasChanges = false;
 
                                     DynamicBuffer<LocalChunkDestructionMask> destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(hitChunkEntity);
+                                    //var localMaskCache = destructionMask.ToNativeArray(Allocator.Temp);
 
                                     // Радиус взрыва в вокселях
                                     int voxelRadius = (int)math.ceil(req.Radius);
                                     int radiusSq = voxelRadius * voxelRadius;
 
-                                    // Прямой проход по всему чанку без умных границ
-                                    for (int z = 0; z < 32; z++)
+                                    // ====================================================================
+                                    // РАСЧЕТ И СУЖЕНИЕ ГРАНИЦ ОБХОДА (BOUNDING BOX СФЕРЫ ВЗРЫВА)
+                                    // ====================================================================
+                                    // Ограничиваем рамки куба строго в пределах чанка [0..31]
+                                    int3 minBound = math.clamp(centerVoxel - voxelRadius, new int3(0), new int3(31));
+                                    int3 maxBound = math.clamp(centerVoxel + voxelRadius, new int3(0), new int3(31));
+
+                                    // Проходим ТОЛЬКО по вокселям, которые попадают в рамки взрыва
+                                    for (int z = minBound.z; z <= maxBound.z; z++)
                                     {
                                         int dz = z - centerVoxel.z;
                                         int dzSq = dz * dz;
 
-                                        for (int y = 0; y < 32; y++)
+                                        for (int y = minBound.y; y <= maxBound.y; y++)
                                         {
                                             int dy = y - centerVoxel.y;
                                             int dySq = dy * dy;
 
-                                            for (int x = 0; x < 32; x++)
+                                            // Предвычисляем сдвиги для плоского индекса на уровне строки ZY, 
+                                            // чтобы не считать сдвиги во внутреннем цикле X
+                                            int flatIndexOffsetBase = (y << 5) + (z << 10);
+
+                                            for (int x = minBound.x; x <= maxBound.x; x++)
                                             {
                                                 int dx = x - centerVoxel.x;
                                                 int dxSq = dx * dx;
-                                                // Прямой плосный индекс вокселя в чанке XYZ
-                                                int flatIndex = x + (y << 5) + (z << 10);
 
-                                                int ulongIndex = flatIndex >> 6;  // Деление на 64
-                                                int bitOffset = flatIndex & 63;   // Остаток от деления на 64
-                                                ulong currentMaskBit = 1UL << bitOffset;
-
-                                                // Математика честной трехмерной сферы в локальном пространстве чанка
+                                                // Проверка: попадает ли воксель в честную сферу
                                                 if (dxSq + dySq + dzSq <= radiusSq)
                                                 {
+                                                    // Быстрое вычисление плоского индекса вокселя
+                                                    int flatIndex = x + flatIndexOffsetBase;
+
+                                                    int ulongIndex = flatIndex >> 6;  // Деление на 64 (индекс элемента в буфере)
+                                                    int bitOffset = flatIndex & 63;   // Остаток от деления на 64 (сдвиг бита)
+                                                    ulong currentMaskBit = 1UL << bitOffset;
 
                                                     LocalChunkDestructionMask maskElement = destructionMask[ulongIndex];
 
-                                                    // 1 — блок есть, 0 — уничтожен
+                                                    // Если блок еще существует (бит равен 1) — уничтожаем его
                                                     if ((maskElement.Value & currentMaskBit) != 0)
                                                     {
                                                         maskElement.Value &= ~currentMaskBit; // Сбрасываем в 0
-                                                        destructionMask[ulongIndex] = maskElement;
+                                                        destructionMask[ulongIndex] = maskElement; // Записываем обратно в буфер
                                                         hasChanges = true;
                                                     }
                                                 }
-                                                totalVoxels++;
-                                                bool isVoxelNotDestroyed = (destructionMask[ulongIndex].Value & (1UL << bitOffset)) != 0;
-                                                if (isVoxelNotDestroyed) totalDestroyedVoxels++;
                                             }
                                         }
                                     }
+                                    //// Прямой проход по всему чанку без умных границ
+                                    //for (int z = 0; z < 32; z++)
+                                    //{
+                                    //    int dz = z - centerVoxel.z;
+                                    //    int dzSq = dz * dz;
+
+                                    //    for (int y = 0; y < 32; y++)
+                                    //    {
+                                    //        int dy = y - centerVoxel.y;
+                                    //        int dySq = dy * dy;
+
+                                    //        for (int x = 0; x < 32; x++)
+                                    //        {
+                                    //            int dx = x - centerVoxel.x;
+                                    //            int dxSq = dx * dx;
+                                    //            // Прямой плосный индекс вокселя в чанке XYZ
+                                    //            int flatIndex = x + (y << 5) + (z << 10);
+
+                                    //            int ulongIndex = flatIndex >> 6;  // Деление на 64
+                                    //            int bitOffset = flatIndex & 63;   // Остаток от деления на 64
+                                    //            ulong currentMaskBit = 1UL << bitOffset;
+
+                                    //            // Математика честной трехмерной сферы в локальном пространстве чанка
+                                    //            if (dxSq + dySq + dzSq <= radiusSq)
+                                    //            {
+
+                                    //                LocalChunkDestructionMask maskElement = destructionMask[ulongIndex];
+
+                                    //                // 1 — блок есть, 0 — уничтожен
+                                    //                if ((maskElement.Value & currentMaskBit) != 0)
+                                    //                {
+                                    //                    maskElement.Value &= ~currentMaskBit; // Сбрасываем в 0
+                                    //                    destructionMask[ulongIndex] = maskElement;
+                                    //                    hasChanges = true;
+                                    //                }
+                                    //            }
+                                    //            totalVoxels++;
+                                    //            bool isVoxelNotDestroyed = (destructionMask[ulongIndex].Value & (1UL << bitOffset)) != 0;
+                                    //            if (isVoxelNotDestroyed) totalDestroyedVoxels++;
+                                    //        }
+                                    //    }
+                                    //}
+
+                                    //if (hasChanges)
+                                    //{
+                                    //    // Копируем измененный кэш обратно в оригинальный DynamicBuffer одной операцией
+                                    //    destructionMask.CopyFrom(localMaskCache);
+                                    //}
 
                                     //#if UNITY_EDITOR
                                     //                                    UnityEngine.Debug.Log($"[Server]: centerVoxel={centerVoxel}" +
@@ -413,39 +470,47 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                     // ====================================================================
                                     if (hasChanges)
                                     {
-                                        //// 1. Сохраняем изменения в локальный серверный буфер
-                                        //for (int x = 0; x < 512; x++) destructionMask[x] = tempArray[x];
-
                                         GhostInstance ghostInstanceComponent = state.EntityManager.GetComponentData<GhostInstance>(hitChunkEntity);
 
-                                        // 2. Создаем RPC команду
-                                        var rleRpc = new ReplyMaskToClientRpc { GhostId = (uint)ghostInstanceComponent.ghostId };
+                                        ChunkRleSerializer.SendChunkMaskToClient(ref ecb, (uint)ghostInstanceComponent.ghostId, destructionMask, Entity.Null);
 
-                                        // 3. Вызываем наш SAFE статический метод сжатия
-                                        ChunkRleSerializer.CompressToRle(destructionMask.AsNativeArray(), ref rleRpc.CompressedBytes);
-                                        //#if UNITY_EDITOR
-                                        //                                        UnityEngine.Debug.Log($"[Server]: Explode: Создаем RPC для ответа маски изменений для ghostId={ghostInstanceComponent.ghostId}" +
-                                        //                                            $"\r\n RLE.Length={rleRpc.CompressedBytes.Length}" +
-                                        //                                            $"\r\n RLE.Capacity={rleRpc.CompressedBytes.Capacity}" +
-                                        //                                        $"\r\n destructionMask.Length={destructionMask.Length}" +
-                                        //                                        $"\r\n destructionMask.Capacity={destructionMask.Capacity}");
-                                        //#endif
-                                        // ====================================================================
-                                        // ЧИСТЫЙ И ПРАВИЛЬНЫЙ ECS-СПОСОБ ОТПРАВКИ RPC
-                                        // ====================================================================
-                                        // Создаем пустую сущность для сетевой команды
-                                        Entity rpcEntity = state.EntityManager.CreateEntity();
-
-                                        // Добавляем на неё компонент с нашими сжатыми данными
-                                        state.EntityManager.AddComponentData(rpcEntity, rleRpc);
-
-                                        // Добавляем системный компонент Netcode, который приказывает отправить этот RPC.
-                                        // Если параметр TargetConnection пустой (Entity.Null), Netcode автоматически 
-                                        // разошлет эту команду ВСЕМ клиентам (Broadcast) ровно одним пакетом.
-                                        state.EntityManager.AddComponentData(rpcEntity, new SendRpcCommandRequest { TargetConnection = Entity.Null });
-
-                                        //ecb.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
+                                        state.EntityManager.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
                                     }
+                                    //if (hasChanges)
+                                    //{
+                                    //    //// 1. Сохраняем изменения в локальный серверный буфер
+                                    //    //for (int x = 0; x < 512; x++) destructionMask[x] = tempArray[x];
+
+                                    //    GhostInstance ghostInstanceComponent = state.EntityManager.GetComponentData<GhostInstance>(hitChunkEntity);
+
+                                    //    // 2. Создаем RPC команду
+                                    //    var rleRpc = new ReplyMaskToClientRpc { GhostId = (uint)ghostInstanceComponent.ghostId };
+
+                                    //    // 3. Вызываем наш SAFE статический метод сжатия
+                                    //    ChunkRleSerializer.CompressToRle(destructionMask.AsNativeArray(), ref rleRpc.CompressedBytes);
+                                    //    //#if UNITY_EDITOR
+                                    //    //                                        UnityEngine.Debug.Log($"[Server]: Explode: Создаем RPC для ответа маски изменений для ghostId={ghostInstanceComponent.ghostId}" +
+                                    //    //                                            $"\r\n RLE.Length={rleRpc.CompressedBytes.Length}" +
+                                    //    //                                            $"\r\n RLE.Capacity={rleRpc.CompressedBytes.Capacity}" +
+                                    //    //                                        $"\r\n destructionMask.Length={destructionMask.Length}" +
+                                    //    //                                        $"\r\n destructionMask.Capacity={destructionMask.Capacity}");
+                                    //    //#endif
+                                    //    // ====================================================================
+                                    //    // ЧИСТЫЙ И ПРАВИЛЬНЫЙ ECS-СПОСОБ ОТПРАВКИ RPC
+                                    //    // ====================================================================
+                                    //    // Создаем пустую сущность для сетевой команды
+                                    //    Entity rpcEntity = state.EntityManager.CreateEntity();
+
+                                    //    // Добавляем на неё компонент с нашими сжатыми данными
+                                    //    state.EntityManager.AddComponentData(rpcEntity, rleRpc);
+
+                                    //    // Добавляем системный компонент Netcode, который приказывает отправить этот RPC.
+                                    //    // Если параметр TargetConnection пустой (Entity.Null), Netcode автоматически 
+                                    //    // разошлет эту команду ВСЕМ клиентам (Broadcast) ровно одним пакетом.
+                                    //    state.EntityManager.AddComponentData(rpcEntity, new SendRpcCommandRequest { TargetConnection = Entity.Null });
+
+                                    //    //ecb.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
+                                    //}
 
 
                                     //// Цикл по элементам буфера: пока i <, чем destructionMask.Length (512)
@@ -469,7 +534,6 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                     //{
                                     //}
                                     //state.EntityManager.SetComponentEnabled<ChunkMeshNeedCreate>(hitChunkEntity, true);
-                                    //state.EntityManager.SetComponentEnabled<ChunkColliderNeedCreate>(hitChunkEntity, true);
 
                                 }
                             }

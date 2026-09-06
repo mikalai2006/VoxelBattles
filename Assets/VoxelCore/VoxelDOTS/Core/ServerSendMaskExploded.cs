@@ -32,54 +32,95 @@ public partial struct ServerSendMaskExploded : ISystem
         foreach (var (request, rpcSource, rpcEntity) in SystemAPI.Query<RequestMaskFromServerRpc, ReceiveRpcCommandRequest>()
                      .WithEntityAccess())
         {
-            uint requestedGhostInstance = request.GhostId;
-
-            // Итерируемся по ВСЕМ чанкам, зарегистрированным на сервере
             for (int i = 0; i < chunkGhostInstanceComponents.Length; i++)
             {
+                uint requestedGhostInstance = request.GhostId;
+
                 // Находим КАЖДЫЙ чанк, у которого совпадает хэш конфигурации
                 if (chunkGhostInstanceComponents[i].ghostId == requestedGhostInstance)
                 {
                     Entity foundChunkEntity = chunkEntities[i];
 
-                    // Дополнительная проверка на случай, если чанк был удален во время кадра
-                    if (state.EntityManager.Exists(foundChunkEntity))
-                    {
-                        var destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
+                    var destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
 
-                        // Создаем структуру ответа для конкретного чанка
-                        var replyRpc = new ReplyMaskToClientRpc
-                        {
-                            GhostId = requestedGhostInstance
-                        };
+                    ChunkRleSerializer.SendChunkMaskToClient(ref ecb, requestedGhostInstance, destructionMask, rpcSource.SourceConnection);
+                    // Нарезаем 512 элементов на 4 RPC пакета
+                    //for (int chunkIdx = 0; chunkIdx < 4; chunkIdx++)
+                    //{
+                    //    var replyRpc = ecb.CreateEntity();
 
-                        // Вызываем наш SAFE статический RLE-компрессор
-                        ChunkRleSerializer.CompressToRle(destructionMask.AsNativeArray(), ref replyRpc.CompressedBytes);
+                    //    var rpcData = new ReplyMaskToClientRpc
+                    //    {
+                    //        GhostId = requestedGhostInstance,
+                    //        ChunkIndex = chunkIdx,
+                    //        CompressedBytes = new FixedList4096Bytes<ulong>()
+                    //    };
 
-#if UNITY_EDITOR
-                        UnityEngine.Debug.Log($"[Server]: Создаем RPC для ответа маски изменений для ghostId={requestedGhostInstance}," +
-                            $" rpcBuffer.Length={replyRpc.CompressedBytes.Length}," +
-                            $" rpcBuffer.Capacity={replyRpc.CompressedBytes.Capacity}!");
-#endif
-                        // Создаем ECS-сущность сетевой команды ответа
-                        Entity responseEntity = ecb.CreateEntity();
-                        ecb.AddComponent(responseEntity, replyRpc);
+                    //    // Заполняем ровно 128 элементов ulong для текущего квадранта маски
+                    //    int startOffset = chunkIdx * 128;
+                    //    for (int x = 0; x < 128; x++)
+                    //    {
+                    //        rpcData.CompressedBytes.Add(destructionMask[startOffset + x].Value);
+                    //    }
 
-                        // Отправляем ответ СТРОГО ТОМУ КЛИЕНТУ, который сделал запрос
-                        ecb.AddComponent(responseEntity, new SendRpcCommandRequest
-                        {
-                            TargetConnection = rpcSource.SourceConnection
-                        });
-                        //UnityEngine.Debug.LogWarning($"[Server]: Отправляем маску для {requestedGhostInstance}");
-                    }
+                    //    ecb.AddComponent(replyRpc, rpcData);
 
-                    // Убрали break! Продолжаем искать остальные чанки с таким же хэшем
+                    //    // Отправляем конкретному зашедшему клиенту
+                    //    ecb.AddComponent(replyRpc, new SendRpcCommandRequest
+                    //    {
+                    //        TargetConnection = rpcSource.SourceConnection
+                    //    });
+                    //}
                 }
             }
+
+            //            // Итерируемся по ВСЕМ чанкам, зарегистрированным на сервере
+            //            for (int i = 0; i < chunkGhostInstanceComponents.Length; i++)
+            //            {
+            //                // Находим КАЖДЫЙ чанк, у которого совпадает хэш конфигурации
+            //                if (chunkGhostInstanceComponents[i].ghostId == requestedGhostInstance)
+            //                {
+            //                    Entity foundChunkEntity = chunkEntities[i];
+
+            //                    // Дополнительная проверка на случай, если чанк был удален во время кадра
+            //                    if (state.EntityManager.Exists(foundChunkEntity))
+            //                    {
+            //                        var destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
+
+            //                        // Создаем структуру ответа для конкретного чанка
+            //                        var replyRpc = new ReplyMaskToClientRpc
+            //                        {
+            //                            GhostId = requestedGhostInstance
+            //                        };
+
+            //                        // Вызываем наш SAFE статический RLE-компрессор
+            //                        ChunkRleSerializer.CompressToRle(destructionMask.AsNativeArray(), ref replyRpc.CompressedBytes);
+
+            //#if UNITY_EDITOR
+            //                        UnityEngine.Debug.Log($"[Server]: Создаем RPC для ответа маски изменений для ghostId={requestedGhostInstance}," +
+            //                            $" rpcBuffer.Length={replyRpc.CompressedBytes.Length}," +
+            //                            $" rpcBuffer.Capacity={replyRpc.CompressedBytes.Capacity}!");
+            //#endif
+            //                        // Создаем ECS-сущность сетевой команды ответа
+            //                        Entity responseEntity = ecb.CreateEntity();
+            //                        ecb.AddComponent(responseEntity, replyRpc);
+
+            //                        // Отправляем ответ СТРОГО ТОМУ КЛИЕНТУ, который сделал запрос
+            //                        ecb.AddComponent(responseEntity, new SendRpcCommandRequest
+            //                        {
+            //                            TargetConnection = rpcSource.SourceConnection
+            //                        });
+            //                        //UnityEngine.Debug.LogWarning($"[Server]: Отправляем маску для {requestedGhostInstance}");
+            //                    }
+
+            //                    // Убрали break! Продолжаем искать остальные чанки с таким же хэшем
+            //                }
+            //            }
 
             // Уничтожаем сущность входящего запроса, так как мы полностью ответили по всем чанкам
             ecb.DestroyEntity(rpcEntity);
         }
+
         //// Перебираем все пришедшие от клиентов RPC-запросы
         //// ReceiveRpcCommandRequest хранит информацию о том, КАКОЙ конкретно клиент прислал пакет
         //foreach (var (request, rpcSource, rpcEntity) in SystemAPI.Query<

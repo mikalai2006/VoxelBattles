@@ -26,7 +26,7 @@ public struct NewChunkColliderData
 // Теперь managed-выгрузка в BRG будет просыпаться строго один раз в кадр,
 // когда фоновые воркеры полностью допекут геометрию без чехарды сетевых откатов.
 // ====================================================================
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)] // WorldSystemFilterFlags.ClientSimulation | 
 //[UpdateInGroup(typeof(SimulationSystemGroup))]
 //[UpdateAfter(typeof(CreateColliderSystem))]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
@@ -167,7 +167,6 @@ public partial class ApplyColliderSystem : SystemBase
             }
         }
 
-
         BlobAssetReference<Unity.Physics.Collider> finalVehicleCompoundCollider = default;
 
         if (validCollidersCount > 0)
@@ -243,8 +242,10 @@ public partial class ApplyColliderSystem : SystemBase
                         var safeStatusItem = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
                         if (safeStatusItem.SafeStatus.IsCreated)
                         {
-                            safeStatusItem.SafeStatus.Dispose();
-                            safeStatusItem.SafeStatus = default;
+                            //safeStatusItem.SafeStatus.Dispose();
+                            //safeStatusItem.SafeStatus = default;
+                            // сбрасываем статус джобы.
+                            safeStatusItem.SafeStatus[0] = new int3(0, 0, 0);
                         }
                         voxelChildColliderRegistrySingleton.Registry[chunkEntity] = safeStatusItem;
                     }
@@ -402,7 +403,6 @@ public partial class ApplyColliderSystem : SystemBase
 
                 isColliderAssignedToEntity = true;
 
-                //UnityEngine.Debug.LogWarning($"[{textWorld}]: ExecuteManagedMeshAllocation isColliderAssignedToEntity={isColliderAssignedToEntity}, {rootVehicleEntity.Index}, isEntityDying={isEntityDying}!");
             }
             else
             {

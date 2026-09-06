@@ -75,6 +75,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 
 public static class VoxelInputPackingUtility
 {
@@ -106,6 +107,46 @@ public static class VoxelInputPackingUtility
 public static class ChunkRleSerializer
 {
     private const int TotalBytesInChunk = 512 * 8; // 512 ulong * 8 байт = 4096 байт
+
+    /// <summary>
+    /// Нарезает 512 элементов маски чанка на 4 RPC-пакета и отправляет их клиенту.
+    /// </summary>
+    public static void SendChunkMaskToClient(
+        ref EntityCommandBuffer ecb,
+        uint ghostId,
+        DynamicBuffer<LocalChunkDestructionMask> maskBuffer,
+        Entity targetConnectionEntity)
+    {
+        // Проверяем на всякий случай размер буфера
+        if (maskBuffer.Length < 512) return;
+
+        for (int chunkIdx = 0; chunkIdx < 4; chunkIdx++)
+        {
+            var rpcEntity = ecb.CreateEntity();
+
+            var rpcData = new ReplyMaskToClientRpc
+            {
+                GhostId = ghostId,
+                ChunkIndex = chunkIdx,
+                CompressedBytes = new FixedList4096Bytes<ulong>()
+            };
+
+            // Заполняем ровно 128 элементов
+            int startOffset = chunkIdx * 128;
+            for (int i = 0; i < 128; i++)
+            {
+                rpcData.CompressedBytes.Add(maskBuffer[startOffset + i].Value);
+            }
+
+            ecb.AddComponent(rpcEntity, rpcData);
+
+            // Направляем RPC конкретному игроку
+            ecb.AddComponent(rpcEntity, new SendRpcCommandRequest
+            {
+                TargetConnection = targetConnectionEntity
+            });
+        }
+    }
 
     //public static void CompressToRle(NativeArray<LocalChunkDestructionMask> maskArray, ref FixedList512Bytes<int> outputList)
     //{
@@ -245,6 +286,38 @@ public static class ChunkRleSerializer
     //        }
     //    }
     //}
+
+    public static void CompressToRle(NativeArray<LocalChunkDestructionMask> maskArray, ref FixedList4096Bytes<ulong> outputList)
+    {
+        // 1. Приводим массив структур к массиву ulong (без аллокаций)
+        NativeArray<ulong> ulongArray = maskArray.Reinterpret<LocalChunkDestructionMask, ulong>();
+
+        // 2. Явно выставляем длину списка, чтобы аллоцировать внутренние элементы
+        outputList.Length = ulongArray.Length;
+
+        // 3. Безопасно копируем данные по индексам (Burst скомпилирует это как MemCpy)
+        for (int i = 0; i < ulongArray.Length; i++)
+        {
+            outputList[i] = ulongArray[i];
+        }
+    }
+    public static void DecompressFromRle(in FixedList4096Bytes<ulong> rleData, DynamicBuffer<LocalChunkDestructionMask> targetBuffer)
+    {
+        // 1. Готовим буфер под полный размер маски чанка (512 элементов ulong = 32^3 бит)
+        targetBuffer.Clear();
+        targetBuffer.ResizeUninitialized(512);
+
+        // 2. Интерпретируем буфер как плоский NativeArray<ulong> без аллокаций памяти
+        NativeArray<ulong> targetArray = targetBuffer.Reinterpret<ulong>().AsNativeArray();
+
+        // 3. Безопасно восстанавливаем данные по индексам
+        // Примечание: Когда вы добавите логику RLE, этот цикл заменится на цикл распаковки пар данных
+        for (int i = 0; i < rleData.Length; i++)
+        {
+            targetArray[i] = rleData[i];
+        }
+    }
+
     public static void CompressToRle(NativeArray<LocalChunkDestructionMask> maskArray, ref FixedList512Bytes<byte> outputList)
     {
         outputList.Clear();

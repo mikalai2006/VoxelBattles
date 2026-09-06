@@ -76,7 +76,7 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             int totalActiveChunks = chunkCoords.Length;
 
             // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
-            SpawnModelChunks(ref state, ref ecb, in prefabConfig.ChunkGhostPrefab, rootNetworkId, modelHash, in chunkCoords, totalActiveChunks, in rootTransform, ref rootEntity, ref template.SizeModel);
+            SpawnModelChunks(ref state, ref ecb, in prefabConfig.ChunkGhostPrefab, rootNetworkId, modelHash, in chunkCoords, totalActiveChunks, in rootTransform, ref rootEntity, ref template);
         }
     }
 
@@ -91,14 +91,14 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
         int totalActiveChunks,
         in LocalTransform rootTransform,
         ref Entity rootEntity, // Принимаем Entity родительского корня для заполнения его буфера
-        ref int3 modelSizeInChunks) // Передаем габариты модели (например, X:4, Y:2, Z:6 чанков)
+        ref ModelRuntimeTemplate model) // Передаем габариты модели (например, X:4, Y:2, Z:6 чанков)
     {
         // 1. ВЫЧИСЛЯЕМ СМЕЩЕНИЕ ПИВОТА В МЕТРАХ (размер чанка = 32 вокселя * 1.0f)
         // Делим размеры на 2.0f, чтобы найти идеальный геометрический центр кузова
         float3 pivotOffset = new float3(
-            (modelSizeInChunks.x * 32f) / 2f,
+            (model.SizeModel.x * 32f) / 2f,
             0f, // По оси Y оставляем 0, чтобы пивот был в самом НИЗУ (под днищем машины)
-            (modelSizeInChunks.z * 32f) / 2f
+            (model.SizeModel.z * 32f) / 2f
         );
 
 
@@ -130,11 +130,44 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             var maskBuffer = ecb.SetBuffer<LocalChunkDestructionMask>(chunkEntity);
             // Мгновенно выделяем память под 512 элементов без оверхеда на Add()
             maskBuffer.ResizeUninitialized(512);
-            // Быстрое заполнение памяти
+            //// Быстрое заполнение памяти
+            //for (int m = 0; m < 512; m++)
+            //{
+            //    maskBuffer[m] = new LocalChunkDestructionMask { Value = 0xFFFFFFFFFFFFFFFFUL };
+            //}
+
+            // берем чанк и заполняем маску
+            if (!model.ChunkCoordToOrderIndexMap.TryGetValue(localChunkCoord, out int chunkOrderIndex)) continue;
+
+            int chunkOffset = chunkOrderIndex * 32768;
             for (int m = 0; m < 512; m++)
             {
-                maskBuffer[m] = new LocalChunkDestructionMask { Value = 0xFFFFFFFFFFFFFFFFUL };
+                ulong chunkMaskValue = 0UL; // Изначально все 64 бита равны 0 (воздух)
+                int baseFlatIndex = m << 6; // m * 64 (начальный индекс вокселя для этого ulong)
+
+                for (int bit = 0; bit < 64; bit++)
+                {
+                    int localFlatIndex = baseFlatIndex + bit;
+                    int targetColorIndex = chunkOffset + localFlatIndex;
+
+                    // Безопасная проверка границ массива цветов модели
+                    if (targetColorIndex >= 0 && targetColorIndex < model.FlattenedLinearColors.Length)
+                    {
+                        byte color = model.FlattenedLinearColors[targetColorIndex];
+
+                        // Если воксель изначально существовал в модели (не воздух)
+                        if (color > 0)
+                        {
+                            // Выставляем соответствующий бит в 1 (воксель цел)
+                            chunkMaskValue |= (1UL << bit);
+                        }
+                    }
+                }
+
+                // Записываем собранную маску 64 вокселей в буфер чанка
+                maskBuffer[m] = new LocalChunkDestructionMask { Value = chunkMaskValue };
             }
+
             //maskBuffer.Clear();
             //for (int m = 0; m < 512; m++)
             //{

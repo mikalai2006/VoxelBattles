@@ -17,7 +17,9 @@ public struct RequestMaskFromServerRpc : IRpcCommand
 public struct ReplyMaskToClientRpc : IRpcCommand
 {
     public uint GhostId;
-    public FixedList512Bytes<byte> CompressedBytes;
+    public int ChunkIndex;
+    public FixedList4096Bytes<ulong> CompressedBytes;
+    //public FixedList512Bytes<byte> CompressedBytes;
     //public FixedList512Bytes<byte> CompressedBytes2;
     //public FixedList512Bytes<byte> CompressedBytes3;
     //public FixedList512Bytes<byte> CompressedBytes4;

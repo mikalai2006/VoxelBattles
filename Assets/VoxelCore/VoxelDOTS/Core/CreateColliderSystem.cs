@@ -27,7 +27,7 @@ public struct ChunkColliderNeedApply : IComponentData, IEnableableComponent { }
 //    public bool isCreatedCollider;
 //}
 
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)] // WorldSystemFilterFlags.ClientSimulation | 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 [BurstCompile]
 public partial struct CreateColliderSystem : ISystem
@@ -280,40 +280,25 @@ public partial struct CreateColliderSystem : ISystem
             int chunkOffset = chunkOrderIndex * 32768;
 
             // МГНОВЕННАЯ БЛОКИРОВКА ЧАНКА!
-
             //m_ChunkColliderNeedCreate.SetComponentEnabled(entity, false);
             SystemAPI.SetComponentEnabled<ChunkColliderNeedCreate>(entity, false);
 
-            var singleChunkStatus = new NativeArray<int3>(3, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            //var singleChunkStatus = new NativeArray<int3>(3, Allocator.Persistent, NativeArrayOptions.ClearMemory);
 
-            // Выделяем массив для блоба коллайдера
-            //var singleChunkColliderBlob = new NativeArray<BlobAssetReference<Unity.Physics.Collider>>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
-            var outputGeomArray = new NativeArray<BoxGeometry>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            //// Выделяем массив для блоба коллайдера
+            ////var singleChunkColliderBlob = new NativeArray<BlobAssetReference<Unity.Physics.Collider>>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+            //var outputGeomArray = new NativeArray<BoxGeometry>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
 
-            // 2. Планируем джобу выпекания MeshCollider для этого чанка
-            //var colliderJob = new GenerateChunkColliderJob
-            //{
-            //    LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
-            //    OutputColliderBlob = singleChunkColliderBlob,
-            //    JobCountersRef = singleChunkStatus,
-            //    FlattenedModelColors = template.FlattenedLinearColors,
-            //    ChunkOffsetInFlattenedArray = chunkOffset,
-            //};
-            var colliderJob = new FindVoxelModelBoundsJob
-            {
-                //ChunkCoordToOrderIndexMap = template.ChunkCoordToOrderIndexMap,
-                //SizeModel = template.SizeModel,
-                FlattenedModelColors = template.FlattenedLinearColors,
-                LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
-                ChunkOffsetInFlattenedArray = chunkOffset,
-                VoxelScale = 1,
-                OutputBoxGeometry = outputGeomArray,
-                JobStatusRef = singleChunkStatus,
-            };
-
-            JobHandle chunkColliderHandle = colliderJob.Schedule(state.Dependency);
-
-            m_JobHandles.Add(chunkColliderHandle);
+            //// 2. Планируем джобу выпекания MeshCollider для этого чанка
+            ////var colliderJob = new GenerateChunkColliderJob
+            ////{
+            ////    LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
+            ////    OutputColliderBlob = singleChunkColliderBlob,
+            ////    JobCountersRef = singleChunkStatus,
+            ////    FlattenedModelColors = template.FlattenedLinearColors,
+            ////    ChunkOffsetInFlattenedArray = chunkOffset,
+            ////};
+            ///
 
             // 1. Вычисляем исходное локальное смещение чанка (размер чанка 32 вокселя)
             float3 baseLocalOffset = (float3)chunkIndex.Value * 32f * 1.0f;
@@ -349,13 +334,77 @@ public partial struct CreateColliderSystem : ISystem
                 aabbWorld = Unity.Mathematics.AABB.Transform(parentLtw.Value, aabbLocal);
             }
 
-            // БЕЗОПАСНАЯ РЕГИСТРАЦИЯ НА СУЩНОСТИ ЧАНКА:
-            //m_ChunkColliderDataLookup[entity] = new ChunkColliderData
+            // 1. Проверяем, создана ли уже запись для этого чанка в хэшмапе синглтона
+            if (!voxelChildColliderRegistrySingleton.Registry.TryGetValue(entity, out var currentChunkData))
+            {
+                // ЗАПИСИ НЕТ: Создаем новые персистентные массивы для этого чанка один раз!
+                var persistentGeomArray = new NativeArray<BoxGeometry>(1, Allocator.Persistent);
+                var persistentStatusArray = new NativeArray<int3>(1, Allocator.Persistent);
+
+                // Инициализируем статус нулями (z = 0 означает, что джоба в процессе расчета)
+                persistentStatusArray[0] = new int3(0, 0, 0);
+
+                // Собираем базовую структуру данных чанка
+                currentChunkData = new ChunkColliderData
+                {
+                    GeometryArray = persistentGeomArray,
+                    SafeStatus = persistentStatusArray,
+                    RootVehicleEntity = rootVehicleEntity,
+                    LocalOffsetWithPivot = localOffsetWithPivot,
+                    LocalBounds = new MinMaxAABB { Min = aabbLocal.Min, Max = aabbLocal.Max },
+                    WorldBounds = new MinMaxAABB { Min = aabbWorld.Min, Max = aabbWorld.Max },
+                    //index = chunkOrderIndex
+                };
+
+                // Сохраняем пустую заготовку в синглтон, чтобы другие системы знали о её существовании
+                voxelChildColliderRegistrySingleton.Registry[entity] = currentChunkData;
+            }
+            else
+            {
+                // ЗАПИСЬ ЕСТЬ: Просто сбрасываем статус в ноль перед новым фоновым расчетом
+                if (currentChunkData.SafeStatus.IsCreated)
+                {
+                    currentChunkData.SafeStatus[0] = new int3(0, 0, 0); // z = 0 (расчет запущен)
+                }
+            }
+
+            var colliderJob = new FindVoxelModelBoundsJob
+            {
+                //ChunkCoordToOrderIndexMap = template.ChunkCoordToOrderIndexMap,
+                //SizeModel = template.SizeModel,
+                FlattenedModelColors = template.FlattenedLinearColors,
+                LiveMask = maskBuffer.AsNativeArray().AsReadOnly(),
+                ChunkOffsetInFlattenedArray = chunkOffset,
+                VoxelScale = 1,
+                OutputBoxGeometry = voxelChildColliderRegistrySingleton.Registry[entity].GeometryArray,
+                JobStatusRef = voxelChildColliderRegistrySingleton.Registry[entity].SafeStatus,
+            };
+
+            JobHandle chunkColliderHandle = colliderJob.Schedule(state.Dependency);
+
+            m_JobHandles.Add(chunkColliderHandle);
+
+            //// Очищаем старые данные
+            //if (voxelChildColliderRegistrySingleton.Registry.TryGetValue(entity, out var oldData))
             //{
-            //    //LastBakingJobHandle = chunkColliderHandle,
+            //    if (oldData.GeometryArray.IsCreated)
+            //    {
+            //        oldData.GeometryArray.Dispose();
+            //    }
+
+            //    if (oldData.SafeStatus.IsCreated)
+            //    {
+            //        oldData.SafeStatus.Dispose();
+            //    }
+            //}
+            //// добавляем коллайдер чанка
+            //voxelChildColliderRegistrySingleton.Registry[entity] = new ChunkColliderData
+            //{
             //    //SafeColliderBlob = singleChunkColliderBlob,
-            //    SafeCounter = singleChunkCounter,
+            //    GeometryArray = outputGeomArray,
+            //    SafeStatus = singleChunkStatus,
             //    RootVehicleEntity = rootVehicleEntity,
+
             //    LocalOffsetWithPivot = localOffsetWithPivot,
             //    LocalBounds = new MinMaxAABB { Min = aabbLocal.Min, Max = aabbLocal.Max },
             //    WorldBounds = new MinMaxAABB { Min = aabbWorld.Min, Max = aabbWorld.Max },
@@ -363,49 +412,9 @@ public partial struct CreateColliderSystem : ISystem
             //    index = chunkIndex.Value
             //};
 
-            if (voxelChildColliderRegistrySingleton.Registry.TryGetValue(entity, out var oldBlob))
-            {
-                //if (oldBlob.SafeColliderBlob.IsCreated)
-                //{
-                //    //voxelChildColliderRegistrySingleton.DisposeList.AddRange(oldBlob);
-                //    for (int x = 0; x < oldBlob.SafeColliderBlob.Length; x++)
-                //    {
-                //        if (oldBlob.SafeColliderBlob[x].IsCreated)
-                //        {
-                //            oldBlob.SafeColliderBlob[x].Dispose();
-                //        }
-                //    }
-                //    oldBlob.SafeColliderBlob.Dispose();
-                //}
-                if (oldBlob.GeometryArray.IsCreated)
-                {
-                    oldBlob.GeometryArray.Dispose();
-                }
 
-                if (oldBlob.SafeStatus.IsCreated)
-                {
-                    oldBlob.SafeStatus.Dispose();
-                }
-
-            }
-            // добавляем коллайдер чанка
-            voxelChildColliderRegistrySingleton.Registry[entity] = new ChunkColliderData
-            {
-                //SafeColliderBlob = singleChunkColliderBlob,
-                GeometryArray = outputGeomArray,
-                SafeStatus = singleChunkStatus,
-                RootVehicleEntity = rootVehicleEntity,
-
-                LocalOffsetWithPivot = localOffsetWithPivot,
-                LocalBounds = new MinMaxAABB { Min = aabbLocal.Min, Max = aabbLocal.Max },
-                WorldBounds = new MinMaxAABB { Min = aabbWorld.Min, Max = aabbWorld.Max },
-                //HasGraphicsBefore = hasGraphics,
-                index = chunkIndex.Value
-            };
-
-
-            var isClient = state.WorldUnmanaged.IsClient();
-            string textWorld = isClient ? "Client" : "Server";
+            //var isClient = state.WorldUnmanaged.IsClient();
+            //string textWorld = isClient ? "Client" : "Server";
             //UnityEngine.Debug.Log($"[{textWorld}] Create collider ");
 
             //m_ChunkColliderDataLookup.SetComponentEnabled(entity, true);

@@ -24,73 +24,153 @@ public struct FindVoxelModelBoundsJob : IJob
 
     public void Execute()
     {
-        float3 min = new float3(float.MaxValue);
-        float3 max = new float3(float.MinValue);
-        bool hasAnyVoxels = false;
+        // Инициализируем индексы слоев "вывернутыми" значениями
+        int minX = 32, maxX = -1;
+        int minY = 32, maxY = -1;
+        int minZ = 32, maxZ = -1;
 
-        const int chunkVolume = 32768; // 32^3 вокселей в одном чанке
+        int aliveCount = 0;
 
-        // Проходим по всем 32^3 вокселям ВНУТРИ ОДНОГО этого чанка
-        for (int i = 0; i < chunkVolume; i++)
+        // Послойный обход чанка по вашему каноническому индексу
+        for (int z = 0; z < 32; z++)
         {
-            // 1. Проверяем вашу битовую маску разрушений чанка
-            int ulongIndex = i >> 6;      // Индекс ulong (0..511)
-            int bitOffset = i & 63;       // Смещение бита (0..63)
+            for (int y = 0; y < 32; y++)
+            {
+                for (int x = 0; x < 32; x++)
+                {
+                    int flatIndex = x + (y << 5) + (z << 10);
 
-            // Читаем маску (индекс ulongIndex строго от 0 до 511, никакой OutOfRange невозможен)
-            ulong maskValue = LiveMask[ulongIndex].Value;
+                    // 1. Проверяем, существовал ли воксель в этой точке ИЗНАЧАЛЬНО при запекании модели
+                    int targetColorIndex = ChunkOffsetInFlattenedArray + flatIndex;
+                    if (targetColorIndex < 0 || targetColorIndex >= FlattenedModelColors.Length) continue;
 
-            bool isVoxelNotDestroyed = (maskValue & (1UL << bitOffset)) != 0;
-            if (!isVoxelNotDestroyed) continue;
+                    byte bakedColor = FlattenedModelColors[targetColorIndex];
+                    if (bakedColor == 0) continue; // Если тут изначально был воздух фабрики — этот индекс нас вообще не интересует, идем дальше!
 
-            // 2. Проверяем исходный цвет в запеченном массиве
-            int targetColorIndex = ChunkOffsetInFlattenedArray + i;
+                    // 2. Если воксель изначально БЫЛ, проверяем его ЖИВУЮ МАСКУ (не уничтожен ли он сейчас)
+                    int ulongIndex = flatIndex >> 6;
+                    int bitOffset = flatIndex & 63;
+                    ulong maskValue = LiveMask[ulongIndex].Value;
 
-            // Безопасная проверка выхода за границы плоского массива цветов
-            if (targetColorIndex < 0 || targetColorIndex >= FlattenedModelColors.Length) continue;
+                    bool isVoxelNotDestroyed = (maskValue & (1UL << bitOffset)) != 0;
 
-            byte color = FlattenedModelColors[targetColorIndex];
-            if (color == 0) continue; // Воздух
+                    // Если воксель изначально был в модели, но СЕЙЧАС его уничтожила пуля — ПРОПУСКАЕМ ЕГО!
+                    if (!isVoxelNotDestroyed) continue;
 
-            hasAnyVoxels = true;
+                    // --- ВОТ ТЕПЕРЬ СЮДА ДОХОДЯТ ТОЛЬКО РЕАЛЬНО УЦЕЛЕВШИЕ ВОКСЕЛИ ---
+                    aliveCount++;
 
-            // 3. Восстанавливаем локальные координаты X, Y, Z вокселя внутри чанка (0..31)
-            int lx = i & 31;
-            int ly = (i >> 5) & 31;
-            int lz = (i >> 10) & 31;
-
-            // Позиция СТРОГО ОТНОСИТЕЛЬНО НУЛЯ ЧАНКА в метрах!
-            // Никаких глобальных координат модели сюда не добавляем, чтобы убрать баг с двойным сдвигом
-            float3 localVoxelPosInMeters = new float3(lx, ly, lz) * VoxelScale;
-
-            min = math.min(min, localVoxelPosInMeters);
-            max = math.max(max, localVoxelPosInMeters);
+                    // Фиксируем реальные индексы сжатия
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    if (z < minZ) minZ = z;
+                    if (z > maxZ) maxZ = z;
+                }
+            }
         }
 
-        // Записываем итоговую геометрию для этого чанка
-        if (!hasAnyVoxels)
+        if (aliveCount == 0)
         {
             OutputBoxGeometry[0] = new BoxGeometry { Size = float3.zero };
         }
         else
         {
-            // Корректируем min/max на половину вокселя для плотного облегания внешних граней
-            float3 halfVoxel = new float3(VoxelScale * 0.5f);
-            float3 finalMin = min - halfVoxel;
-            float3 finalMax = max + halfVoxel;
+            // Считаем чистый размер куба в количестве вокселей
+            float3 voxelSize = new float3(
+                (maxX - minX) + 1,
+                (maxY - minY) + 1,
+                (maxZ - minZ) + 1
+            );
 
-            // Собираем чистую Box-геометрию в локальном пространстве чанка
+            // Считаем точный геометрический центр оставшихся кубиков
+            float3 voxelCenter = new float3(
+                (minX + maxX) * 0.5f,
+                (minY + maxY) * 0.5f,
+                (minZ + maxZ) * 0.5f
+            );
+
+            // Собираем BoxGeometry с учетом масштаба (VoxelScale = 1)
             OutputBoxGeometry[0] = new BoxGeometry
             {
-                Center = (finalMin + finalMax) * 0.5f,
-                Size = finalMax - finalMin,
+                Center = voxelCenter * VoxelScale, // Центр теперь будет СДВИГАТЬСЯ вслед за разрушением!
+                Size = voxelSize * VoxelScale,     // Размер будет четко равен количеству вокселей
                 Orientation = quaternion.identity,
-                BevelRadius = 0.005f // Небольшой скос для плавной физики столкновений
+                BevelRadius = 0.005f
             };
         }
 
-        // возвращаем статусы / z = 1 - джоба завершена
-        JobStatusRef[0] = new int3(0, 0, 1);
+        // Возвращаем реальный статус в систему
+        JobStatusRef[0] = new int3(minZ, maxZ, 1);
+
+        //float3 min = new float3(float.MaxValue);
+        //float3 max = new float3(float.MinValue);
+        //bool hasAnyVoxels = false;
+
+        //const int chunkVolume = 32768; // 32^3 вокселей в одном чанке
+
+        //// Проходим по всем 32^3 вокселям ВНУТРИ ОДНОГО этого чанка
+        //for (int i = 0; i < chunkVolume; i++)
+        //{
+        //    // 1. Проверяем вашу битовую маску разрушений чанка
+        //    int ulongIndex = i >> 6;      // Индекс ulong (0..511)
+        //    int bitOffset = i & 63;       // Смещение бита (0..63)
+
+        //    // Читаем маску (индекс ulongIndex строго от 0 до 511, никакой OutOfRange невозможен)
+        //    ulong maskValue = LiveMask[ulongIndex].Value;
+
+        //    bool isVoxelNotDestroyed = (maskValue & (1UL << bitOffset)) != 0;
+        //    if (!isVoxelNotDestroyed) continue;
+
+        //    // 2. Проверяем исходный цвет в запеченном массиве
+        //    int targetColorIndex = ChunkOffsetInFlattenedArray + i;
+
+        //    // Безопасная проверка выхода за границы плоского массива цветов
+        //    if (targetColorIndex < 0 || targetColorIndex >= FlattenedModelColors.Length) continue;
+
+        //    byte color = FlattenedModelColors[targetColorIndex];
+        //    if (color == 0) continue; // Воздух
+
+        //    hasAnyVoxels = true;
+
+        //    // 3. Восстанавливаем локальные координаты X, Y, Z вокселя внутри чанка (0..31)
+        //    int lx = i & 31;
+        //    int ly = (i >> 5) & 31;
+        //    int lz = (i >> 10) & 31;
+
+        //    // Позиция СТРОГО ОТНОСИТЕЛЬНО НУЛЯ ЧАНКА в метрах!
+        //    // Никаких глобальных координат модели сюда не добавляем, чтобы убрать баг с двойным сдвигом
+        //    float3 localVoxelPosInMeters = new float3(lx, ly, lz) * VoxelScale;
+
+        //    min = math.min(min, localVoxelPosInMeters);
+        //    max = math.max(max, localVoxelPosInMeters);
+        //}
+
+        //// Записываем итоговую геометрию для этого чанка
+        //if (!hasAnyVoxels)
+        //{
+        //    OutputBoxGeometry[0] = new BoxGeometry { Size = float3.zero };
+        //}
+        //else
+        //{
+        //    // Корректируем min/max на половину вокселя для плотного облегания внешних граней
+        //    float3 halfVoxel = new float3(VoxelScale * 0.5f);
+        //    float3 finalMin = min - halfVoxel;
+        //    float3 finalMax = max + halfVoxel;
+
+        //    // Собираем чистую Box-геометрию в локальном пространстве чанка
+        //    OutputBoxGeometry[0] = new BoxGeometry
+        //    {
+        //        Center = (finalMin + finalMax) * 0.5f,
+        //        Size = finalMax - finalMin,
+        //        Orientation = quaternion.identity,
+        //        BevelRadius = 0.005f // Небольшой скос для плавной физики столкновений
+        //    };
+        //}
+
+        //// возвращаем статусы / z = 1 - джоба завершена
+        //JobStatusRef[0] = new int3(0, 0, 1);
     }
 }
 

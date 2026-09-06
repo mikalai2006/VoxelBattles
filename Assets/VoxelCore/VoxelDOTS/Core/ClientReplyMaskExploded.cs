@@ -47,24 +47,60 @@ public partial struct ClientHandleMaskReplySystem : ISystem
                     if (state.EntityManager.Exists(foundChunkEntity))
                     {
                         // Получаем доступ к буферу маски конкретного чанка
-                        var clientBuffer = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
+                        var buffer = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
 
-                        // Распаковываем RLE в буфер этого чанка
-                        ChunkRleSerializer.DecompressFromRle(in compressedBytes, clientBuffer);
-#if UNITY_EDITOR
-                        UnityEngine.Debug.Log($"[Client]: Reply: Меняем маску разрушений для ghostId={ghostInstanceComponents[i].ghostId}[{replyGhostId}]!");
-#endif
-                        // Помечаем этот конкретный чанк тегом для обновления меша/коллайдера
-                        //ecb.AddComponent<VisualsReplyMaskTag>(foundChunkEntity);
 
-                        ecb.SetComponentEnabled<ChunkMeshNeedCreate>(foundChunkEntity, true);
-                        //ecb.SetComponentEnabled<ChunkColliderNeedCreate>(foundChunkEntity, true);
+                        // Гарантируем размер буфера в 512 элементов
+                        if (buffer.Length < 512)
+                        {
+                            buffer.ResizeUninitialized(512);
+                        }
+
+                        // Копируем пришедшие 128 элементов ulong в правильный сектор буфера чанка
+                        int startOffset = replyData.ChunkIndex * 128;
+                        for (int j = 0; j < replyData.CompressedBytes.Length; j++)
+                        {
+                            buffer[startOffset + j] = new LocalChunkDestructionMask { Value = replyData.CompressedBytes[j] };
+                        }
+
+                        // Работаем с трекером кусков
+                        byte currentBitmask = 0;
+                        // Используем SystemAPI.HasComponent - он проверяет актуальное состояние на текущую микросекунду
+                        if (SystemAPI.HasComponent<ChunkSyncTracker>(foundChunkEntity))
+                        {
+                            // Используем SystemAPI.GetComponent - он мгновенно считывает самую свежую запись
+                            currentBitmask = SystemAPI.GetComponent<ChunkSyncTracker>(foundChunkEntity).ReceivedChunksBitmask;
+                        }
+
+                        // Добавляем текущий индекс куска в битовую маску
+                        currentBitmask |= (byte)(1 << replyData.ChunkIndex);
+
+                        // Обновляем значение трекера
+                        state.EntityManager.SetComponentData(foundChunkEntity, new ChunkSyncTracker { ReceivedChunksBitmask = currentBitmask });
+
+                        // Если маска равна 15 (биты 00001111 установлены -> получены куски 0, 1, 2, 3)
+                        if (currentBitmask == 15)
+                        {
+                            // Сигнализируем системе рендеринга, что пора собирать меш
+                            ecb.SetComponentEnabled<ChunkMeshNeedCreate>(foundChunkEntity, true);
+                            ecb.SetComponent(foundChunkEntity, new ChunkSyncTracker { ReceivedChunksBitmask = 0 });
+                        }
+
+                        //                        // Распаковываем RLE в буфер этого чанка
+                        //                        ChunkRleSerializer.DecompressFromRle(in compressedBytes, clientBuffer);
+                        //#if UNITY_EDITOR
+                        //                        UnityEngine.Debug.Log($"[Client]: Reply: Меняем маску разрушений для ghostId={ghostInstanceComponents[i].ghostId}[{replyGhostId}]!");
+                        //#endif
+                        //                        // Помечаем этот конкретный чанк тегом для обновления меша/коллайдера
+                        //                        //ecb.AddComponent<VisualsReplyMaskTag>(foundChunkEntity);
+
+                        //ecb.SetComponentEnabled<ChunkMeshNeedCreate>(foundChunkEntity, true);
+                        ////ecb.SetComponentEnabled<ChunkColliderNeedCreate>(foundChunkEntity, true);
                     }
 
                     // Убираем break! Цикл пойдет дальше и найдет следующие чанки с этим же хэшем
                 }
             }
-
             // Уничтожаем сущность RPC сообщения, так как мы применили его ко всем копиям
             ecb.DestroyEntity(rpcEntity);
         }

@@ -79,6 +79,8 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             AddComponent<ChunkMeshNeedApply>(entity);
             SetComponentEnabled<ChunkMeshNeedApply>(entity, false);
 
+            AddComponent<ChunkSyncTracker>(entity);
+
             //AddComponent<ChunkMeshData>(entity);
             //SetComponentEnabled<ChunkMeshData>(entity, false);
 

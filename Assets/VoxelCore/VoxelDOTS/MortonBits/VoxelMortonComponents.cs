@@ -55,6 +55,13 @@ public struct LocalChunkDestructionMask : IBufferElementData
     //[GhostField(Quantization = 0)]
     public ulong Value;
 }
+// Трекер прогресса загрузки маски чанка
+public struct ChunkSyncTracker : IComponentData
+{
+    // Каждый бит отвечает за свой кусок: 
+    // кусок 0 = 1 (0001), кусок 1 = 2 (0010), кусок 2 = 4 (0100), кусок 3 = 8 (1000)
+    public byte ReceivedChunksBitmask;
+}
 
 
 // Рантайм-метаданные чанка для Presentation-конвейера
@@ -110,7 +117,7 @@ public struct ChunkColliderData //: IComponentData //, IEnableableComponent
     public MinMaxAABB LocalBounds;
     public MinMaxAABB WorldBounds;
     public bool HasGraphicsBefore;
-    public int3 index;
+    //public int3 index;
 }
 
 public struct VoxelChildColliderRegistrySingleton : IComponentData

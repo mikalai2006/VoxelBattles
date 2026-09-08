@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a4da05ff0de39f429940966b4ae7d32, type: 3}
+  m_Name: Chassis_New
+  m_EditorClassIdentifier: Assembly-CSharp::ChassisAsset
+  partName: 
+  bonusHealth: 50
+  mass: 10
+  baseOffset: {x: 0, y: 0, z: 0}
+  meshConfig:
+    sOVoxelData: {fileID: 11400000, guid: 1a035f299b0ce6a4bbc48015335abd5a, type: 2}
+    _material: {fileID: 0}
+    _materialAlpha: {fileID: 0}
+    isOneMesh: 0
+    isGreedy: 0
+    shadowCastingMode: 0
+    isTile: 0
+    existCollider: 0
+    typeCollider: 0
+    physMaterial: {fileID: 0}
+    isConvex: 0
+    isTrigger: 0
+    isRigidbody: 0
+    isKinematic: 0
+    mass: 0
+    isGravity: 0
+    FreezePositionX: 0
+    FreezePositionY: 0
+    FreezePositionZ: 0
+    FreezeRotationX: 0
+    FreezeRotationY: 0
+    FreezeRotationZ: 0
+    rigidbodyInterpolation: 0
+    collisionDetection: 0
+    isDestructible: 0
+    useGlobalScale: 0
+    customScale: 0
+  colorsModifies: []

@@ -11,7 +11,11 @@ public class VoxelModelCacheManager : MonoBehaviour
     //[SerializeField] private List<Color32> colorPalette; // Ваша общая палитра цветов (индексы 1..255)
 
     [Header("Исходные воксельные модели")]
-    [SerializeField] private List<SOVoxelData> configs;
+    [SerializeField] private List<VehiclePresetAsset> configsVehicles;
+    public List<VehiclePresetAsset> ConfigsVehicles => configsVehicles;
+
+    //[Header("Исходные воксельные модели")]
+    //[SerializeField] private List<SOVoxelData> configs;
 
     //private Dictionary<Color32, byte> _paletteRegistry = new Dictionary<Color32, byte>();
 
@@ -55,70 +59,39 @@ public class VoxelModelCacheManager : MonoBehaviour
         int registeredModelsCount = 0;
 
         // Итерируемся по списку исходных ScriptableObject моделей
-        for (int i = 0; i < configs.Count; i++)
+        for (int i = 0; i < configsVehicles.Count; i++)
         {
-            SOVoxelData data = configs[i];
-            if (data == null) continue;
-
-            // Создаем unmanaged-строку из managed-имени ассета
-            FixedString64Bytes unmanagedName = new FixedString64Bytes(data.name);
-            //Debug.Log($"data.name={data.name}");
-            // Используем нативный GetHashCode() и кастуем его в беззнаковый uint хэша
-            uint configHashName = (uint)unmanagedName.GetHashCode();
-            // ИСПРАВЛЕНО: Детерминированный хэш FNV-1a (работает везде одинаково)
-            //uint configHashName = 2166136261; // Базовое смещение (FNV offset basis)
-            //for (int j = 0; j < unmanagedName.Length; j++)
-            //{
-            //    // Умножаем на прайм-число FNV и смешиваем с байтом символа
-            //    configHashName = (configHashName ^ unmanagedName[j]) * 16777619;
-            //}
-
-            //Debug.Log($"[Voxel System]: configHashName={configHashName}");
-            // Бежим по всем существующим рантайм-мирам (ServerWorld, ClientWorld, ThinClientWorld)
-            foreach (var world in allWorlds)
+            SOVoxelData dataChassis = configsVehicles[i].chassis.meshConfig.sOVoxelData;
+            if (dataChassis != null)
             {
-                // Фильтруем миры: нам нужны только те, где крутится физическая или графическая симуляция игры.
-                // Миры редактора (EditorWorld) или утилитарные миры конвертации мы отсекаем.
-                var filterFlags = world.Flags;
-                bool isServer = (filterFlags & WorldFlags.GameServer) != 0;
-                bool isClient = (filterFlags & WorldFlags.GameClient) != 0;
+                CreateCache(dataChassis);
+                registeredModelsCount++;
+            }
 
-                if (isServer || isClient)
+            SOVoxelData dataTower = configsVehicles[i].tower.meshConfig.sOVoxelData;
+            if (dataTower != null)
+            {
+                CreateCache(dataTower);
+                registeredModelsCount++;
+
+                for (int j = 0; j < configsVehicles[i].tower.muzzles.Count; j++)
                 {
-                    // 2. Запускаем фабрику запекания для формирования плоского Morton-массива цветов.
-                    //                    // Мы делаем это для каждого мира отдельно (Allocator.Persistent), так как у каждого 
-                    //                    // мира своя изолированная unmanaged куча памяти NativeParallelHashMap!
-                    //                    MortonBakedModelResult bakedResult = VoxelMortonFactory.BakeMortonModel(data);
-
-                    //                    if (bakedResult.FlattenedMortonColors.IsCreated)
-                    //                    {
-                    //                        // Передаем и регистрируем unmanaged-массивы в синглтон GlobalVoxelModelCache конкретного мира!
-                    //                        VoxelModelRegistrar.RegisterModel(world, configHashName, bakedResult);
-
-                    //                        // Освобождаем временную нативную память фабрики
-                    //                        bakedResult.Dispose();
-
-                    //                        registeredModelsCount++;
-                    //#if UNITY_EDITOR
-                    //                        Debug.Log($"[Voxel Multi-World]: Модель '{data.name}' (Хэш: {configHashName}) успешно запечена в unmanaged-кэш мира: {world.Name}");
-                    //#endif
-                    //                    }
-
-                    LinearBakedModelResult bakedResult = VoxelLinearFactory.BakeLinearModel(data);
-
-                    if (bakedResult.FlattenedLinearColors.IsCreated)
+                    SOVoxelData dataMuzzle = configsVehicles[i].tower.muzzles[j].meshConfig.sOVoxelData;
+                    if (dataMuzzle != null)
                     {
-                        // Передаем и регистрируем unmanaged-массивы в синглтон GlobalVoxelModelCache конкретного мира!
-                        VoxelModelRegistrar.RegisterModel(world, configHashName, bakedResult);
-
-                        // Освобождаем временную нативную память фабрики
-                        bakedResult.Dispose();
-
+                        CreateCache(dataMuzzle);
                         registeredModelsCount++;
-                        //#if UNITY_EDITOR
-                        //                        Debug.Log($"[Voxel Multi-World]: Модель '{data.name}' (Хэш: {configHashName}) успешно запечена в unmanaged-кэш мира: {world.Name}");
-                        //#endif
                     }
+                }
+            }
+
+            for (int j = 0; j < configsVehicles[i].wheelsPreset.wheelSlots.Count; j++)
+            {
+                SOVoxelData dataWheel = configsVehicles[i].wheelsPreset.wheelSlots[j].wheelPartAsset.meshConfig.sOVoxelData;
+                if (dataWheel != null)
+                {
+                    CreateCache(dataWheel);
+                    registeredModelsCount++;
                 }
             }
         }
@@ -126,6 +99,71 @@ public class VoxelModelCacheManager : MonoBehaviour
         Debug.Log($"[Voxel System]: Мультимирное запекание завершено. Всего зарегистрировано {registeredModelsCount} unmanaged-шаблонов во всех сетевых инстансах.");
     }
 
+
+    private void CreateCache(SOVoxelData data)
+    {
+        var allWorlds = World.All;
+        // Создаем unmanaged-строку из managed-имени ассета
+        FixedString64Bytes unmanagedName = new FixedString64Bytes(data.name);
+        //Debug.Log($"data.name={data.name}");
+        // Используем нативный GetHashCode() и кастуем его в беззнаковый uint хэша
+        uint configHashName = (uint)unmanagedName.GetHashCode();
+        // ИСПРАВЛЕНО: Детерминированный хэш FNV-1a (работает везде одинаково)
+        //uint configHashName = 2166136261; // Базовое смещение (FNV offset basis)
+        //for (int j = 0; j < unmanagedName.Length; j++)
+        //{
+        //    // Умножаем на прайм-число FNV и смешиваем с байтом символа
+        //    configHashName = (configHashName ^ unmanagedName[j]) * 16777619;
+        //}
+
+        //Debug.Log($"[Voxel System]: configHashName={configHashName}");
+        // Бежим по всем существующим рантайм-мирам (ServerWorld, ClientWorld, ThinClientWorld)
+        foreach (var world in allWorlds)
+        {
+            // Фильтруем миры: нам нужны только те, где крутится физическая или графическая симуляция игры.
+            // Миры редактора (EditorWorld) или утилитарные миры конвертации мы отсекаем.
+            var filterFlags = world.Flags;
+            bool isServer = (filterFlags & WorldFlags.GameServer) != 0;
+            bool isClient = (filterFlags & WorldFlags.GameClient) != 0;
+
+            if (isServer || isClient)
+            {
+                // 2. Запускаем фабрику запекания для формирования плоского Morton-массива цветов.
+                //                    // Мы делаем это для каждого мира отдельно (Allocator.Persistent), так как у каждого 
+                //                    // мира своя изолированная unmanaged куча памяти NativeParallelHashMap!
+                //                    MortonBakedModelResult bakedResult = VoxelMortonFactory.BakeMortonModel(data);
+
+                //                    if (bakedResult.FlattenedMortonColors.IsCreated)
+                //                    {
+                //                        // Передаем и регистрируем unmanaged-массивы в синглтон GlobalVoxelModelCache конкретного мира!
+                //                        VoxelModelRegistrar.RegisterModel(world, configHashName, bakedResult);
+
+                //                        // Освобождаем временную нативную память фабрики
+                //                        bakedResult.Dispose();
+
+                //                        registeredModelsCount++;
+                //#if UNITY_EDITOR
+                //                        Debug.Log($"[Voxel Multi-World]: Модель '{data.name}' (Хэш: {configHashName}) успешно запечена в unmanaged-кэш мира: {world.Name}");
+                //#endif
+                //                    }
+
+                LinearBakedModelResult bakedResult = VoxelLinearFactory.BakeLinearModel(data);
+
+                if (bakedResult.FlattenedLinearColors.IsCreated)
+                {
+                    // Передаем и регистрируем unmanaged-массивы в синглтон GlobalVoxelModelCache конкретного мира!
+                    VoxelModelRegistrar.RegisterModel(world, configHashName, bakedResult);
+
+                    // Освобождаем временную нативную память фабрики
+                    bakedResult.Dispose();
+
+                    //#if UNITY_EDITOR
+                    //                        Debug.Log($"[Voxel Multi-World]: Модель '{data.name}' (Хэш: {configHashName}) успешно запечена в unmanaged-кэш мира: {world.Name}");
+                    //#endif
+                }
+            }
+        }
+    }
 
     //private void InitializePalette()
     //{

@@ -34,6 +34,18 @@ public struct NetworkParent : IComponentData
     [GhostField] public uint ParentGhostId;
 }
 
+// Вешается на Узел (Sub-Root). Хранит локальную Entity Корня.
+public struct PendingNodeToRoot : IComponentData
+{
+    public Entity LocalRootEntity;
+}
+
+// Вешается на Чанк. Хранит локальную Entity Узла.
+public struct PendingChunkToNode : IComponentData
+{
+    public Entity LocalNodeEntity;
+}
+
 // Тег корневой сущности воксельного объекта
 public struct VoxelModelRootTag : IComponentData { }
 //public struct NeedsMeshRebuildTag : IComponentData { }

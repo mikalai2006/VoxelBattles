@@ -25,9 +25,15 @@ public partial struct ClientSendSpawnVehicleSystem : ISystem
             // 1. Создаем сущность сетевого RPC запроса
             Entity rpcEntity = ecb.CreateEntity();
 
-            ecb.AddComponent(rpcEntity, new RequestSpawnModelRpc
+            ecb.AddComponent(rpcEntity, new RequestSpawnVehicleRpc
             {
-                ConfigHashName = intent.ValueRO.PresetId,
+                //ConfigHashNameMuzzle = intent.ValueRO.ConfigHashNameMuzzle,
+                //ConfigHashNameBody = intent.ValueRO.ConfigHashNameBody,
+                //ConfigHashNameTower = intent.ValueRO.ConfigHashNameTower,
+                //ConfigHashNameWheels = intent.ValueRO.ConfigHashNameWheels,
+                towerData = intent.ValueRO.towerData,
+                bodyData = intent.ValueRO.bodyData,
+                wheelsData = intent.ValueRO.wheelsData,
                 SpawnPosition = intent.ValueRO.SpawnPosition,
                 SpawnRotation = intent.ValueRO.SpawnRotation,
                 //IsAddMove = intent.ValueRO.IsAddMove,

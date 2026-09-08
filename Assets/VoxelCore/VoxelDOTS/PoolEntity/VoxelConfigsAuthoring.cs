@@ -1,8 +1,14 @@
 using Unity.Entities;
 using UnityEngine;
 
-
 // Синглтон ссылок на префабы
+public struct VoxelPrefabConfig : IComponentData
+{
+    public Entity BulletPrefab;
+}
+
+
+// Синглтон ссылок на сетевые префабы
 public struct VoxelGhostPrefabConfig : IComponentData
 {
     public Entity RootGhostPrefab;
@@ -47,6 +53,9 @@ public class VoxelConfigsAuthoring : MonoBehaviour
     [Header("Физика и Масштаб (Сервер и Клиент)")]
     public float sizeVoxel = 1.0f;
 
+    [Header("Префабы")]
+    public GameObject prefabBullet;
+
     [Header("Новые Сетевые Префабы (Архитектура Масок)")]
     public GameObject rootGhostPrefab;
     public GameObject chunkPrefab;
@@ -83,12 +92,18 @@ public class VoxelConfigsAuthoring : MonoBehaviour
             {
                 Entity rootPrefabEntity = GetEntity(authoring.rootGhostPrefab, TransformUsageFlags.Dynamic);
                 Entity chunkPrefabEntity = GetEntity(authoring.chunkPrefab, TransformUsageFlags.Dynamic);
+                Entity bulletPrefabEntity = GetEntity(authoring.prefabBullet, TransformUsageFlags.Dynamic);
 
                 // Записываем их в чистый синглтон VoxelGhostPrefabConfig
                 AddComponent(entity, new VoxelGhostPrefabConfig
                 {
                     RootGhostPrefab = rootPrefabEntity,
                     ChunkGhostPrefab = chunkPrefabEntity
+                });
+                // Записываем их в чистый синглтон VoxelGhostPrefabConfig
+                AddComponent(entity, new VoxelPrefabConfig
+                {
+                    BulletPrefab = bulletPrefabEntity
                 });
             }
             else

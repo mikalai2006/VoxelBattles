@@ -16,6 +16,7 @@ public class TestPoolEntity : MonoBehaviour
 
     //[Header("Модели для спавна")]
     //public List<SOVoxelData> modelsToSpawn;
+    [SerializeField] private VoxelModelCacheManager voxelModelCacheManager;
 
     [Header("Параметры сетки спавна")]
     public int rows = 5;
@@ -37,8 +38,8 @@ public class TestPoolEntity : MonoBehaviour
     private bool isExistMoveEntity = false;
 
 
-    [SerializeField] private VehiclePresetAsset presetToAssemble;
-    [SerializeField] private SOVoxelData testSOToAssemble;
+    //[SerializeField] private VehiclePresetAsset presetToAssemble;
+    //[SerializeField] private SOVoxelData testSOToAssemble;
 
 
     // ПЕРЕМЕННАЯ ДЛЯ ДЕСПАВНА: Хранит ссылки на все активированные сейчас объекты
@@ -62,7 +63,7 @@ public class TestPoolEntity : MonoBehaviour
         inputActions.Player.Interact1.performed -= TestSpawn;
         inputActions.Player.Interact1.Disable();
     }
-    
+
 #endif
     private IEnumerator WaitForBakingAndInitialize()
     {
@@ -363,42 +364,42 @@ public class TestPoolEntity : MonoBehaviour
     //    }
     //}
 
-    private void SpawnVehicle()
-    {
-        if (presetToAssemble == null) return;
-        //if (isExistMoveEntity) return;
+    //private void SpawnVehicle()
+    //{
+    //    if (presetToAssemble == null) return;
+    //    //if (isExistMoveEntity) return;
 
-        // Получаем доступ к ECS-миру
-        World world = World.DefaultGameObjectInjectionWorld;
-        EntityManager em = world.EntityManager;
+    //    // Получаем доступ к ECS-миру
+    //    World world = World.DefaultGameObjectInjectionWorld;
+    //    EntityManager em = world.EntityManager;
 
-        // Высчитываем координаты спавна
-        float3 spawnPos = new float3(_currentClickX * spacing, 35f, _currentClickZ * spacing);
+    //    // Высчитываем координаты спавна
+    //    float3 spawnPos = new float3(_currentClickX * spacing, 35f, _currentClickZ * spacing);
 
-        // Создаем чистую сущность-запрос
-        Entity requestEntity = em.CreateEntity();
+    //    // Создаем чистую сущность-запрос
+    //    Entity requestEntity = em.CreateEntity();
 
-        // Прикрепляем управляемый компонент с данными и ссылкой на ScriptableObject
-        em.AddComponentData(requestEntity, new RequestVehicleAssembly
-        {
-            Preset = presetToAssemble,
-            SpawnPosition = spawnPos,
-            SpawnRotation = quaternion.identity,
-            isAddMove = !isExistMoveEntity,
-            IsDynamic = true // Шасси будет динамическим твердым телом
+    //    // Прикрепляем управляемый компонент с данными и ссылкой на ScriptableObject
+    //    em.AddComponentData(requestEntity, new RequestVehicleAssembly
+    //    {
+    //        Preset = presetToAssemble,
+    //        SpawnPosition = spawnPos,
+    //        SpawnRotation = quaternion.identity,
+    //        isAddMove = !isExistMoveEntity,
+    //        IsDynamic = true // Шасси будет динамическим твердым телом
 
-        });
+    //    });
 
-        isExistMoveEntity = true;
+    //    isExistMoveEntity = true;
 
-        // Сдвигаем координаты сетки вперед
-        _currentClickX++;
-        if (_currentClickX >= columns)
-        {
-            _currentClickX = 0;
-            _currentClickZ++;
-        }
-    }
+    //    // Сдвигаем координаты сетки вперед
+    //    _currentClickX++;
+    //    if (_currentClickX >= columns)
+    //    {
+    //        _currentClickX = 0;
+    //        _currentClickZ++;
+    //    }
+    //}
 
     //private void DespawnVehicle()
     //{
@@ -455,7 +456,11 @@ public class TestPoolEntity : MonoBehaviour
         //#if UNITY_EDITOR
         //        Debug.Log("[Client] SpawnVehicleRPC");
         //#endif
-        if (testSOToAssemble == null) return;
+        if (voxelModelCacheManager == null)
+        {
+            Debug.LogWarning("[Client] Не найден voxelModelCacheManager");
+            return;
+        }
 
         // 1. Находим клиентский сетевой мир Unity DOTS
         World clientWorld = null;
@@ -478,16 +483,73 @@ public class TestPoolEntity : MonoBehaviour
         // Высчитываем координаты спавна
         float3 spawnPos = new float3(_currentClickX * spacing, 55f, _currentClickZ * spacing);
 
-        // 2. Создаем чистую сущность с намерением спавна в клиентском мире
+        // Создаем чистую сущность с намерением спавна в клиентском мире
         Entity intentEntity = em.CreateEntity();
-        // 1. Создаем unmanaged-строку из managed-имени
-        FixedString64Bytes unmanagedName = new FixedString64Bytes(testSOToAssemble.name);
 
-        // ИСПРАВЛЕНО: Используем нативный GetHashCode() и кастуем его в uint
-        uint configHashName = (uint)unmanagedName.GetHashCode();
+        var preset = voxelModelCacheManager.ConfigsVehicles[0];
+
+        // ==================BODY======================
+        // Создаем unmanaged-строку из managed-имени
+        FixedString64Bytes unmanagedNameBody = new FixedString64Bytes(preset.chassis.meshConfig.sOVoxelData.name);
+        // Используем нативный GetHashCode() и кастуем его в uint
+        uint hashNameBodyPreset = (uint)unmanagedNameBody.GetHashCode();
+        BodyData bodyData = new BodyData
+        {
+            HashName = hashNameBodyPreset,
+            Offset = preset.chassis.baseOffset,
+        };
+
+        // ==================WHEELS======================
+        WheelsData wheelsData = new WheelsData
+        {
+            HashName = 0,
+            MoveSpeed = preset.wheelsPreset.moveSpeed,
+            RotationSpeed = preset.wheelsPreset.rotationSpeed
+        };
+
+        var wheelsSlots = new FixedList128Bytes<WheelPresetData>();
+        for (int k = 0; k < preset.wheelsPreset.wheelSlots.Count; k++)
+        {
+            var presetWheel = preset.wheelsPreset.wheelSlots[k];
+            FixedString64Bytes unmanagedNameWheelsPreset = new FixedString64Bytes(presetWheel.wheelPartAsset.meshConfig.sOVoxelData.name);
+            uint hashWheelsPreset = (uint)unmanagedNameWheelsPreset.GetHashCode();
+            wheelsSlots.Add(new WheelPresetData
+            {
+                HashName = hashWheelsPreset,
+                IsRotatable = presetWheel.isRotatable,
+                Offset = presetWheel.offsetInVoxels,
+            });
+        }
+        wheelsData.WheelsSlots = wheelsSlots;
+
+
+        // ==================TOWER======================
+        FixedString64Bytes unmanagedNameTower = new FixedString64Bytes(preset.tower.meshConfig.sOVoxelData.name);
+        uint hashTowerPreset = (uint)unmanagedNameTower.GetHashCode();
+        TowerData towerData = new TowerData
+        {
+            HashName = hashTowerPreset,
+        };
+
+        // ==================MUZZLES======================
+        var muzzlesData = new FixedList128Bytes<MuzzleData>();
+        for (int j = 0; j < preset.tower.muzzles.Count; j++)
+        {
+            FixedString64Bytes unmanagedNameMuzzlePreset = new FixedString64Bytes(preset.tower.muzzles[j].meshConfig.sOVoxelData.name);
+            uint hashMuzzlePreset = (uint)unmanagedNameMuzzlePreset.GetHashCode();
+            muzzlesData.Add(new MuzzleData
+            {
+                HashName = hashMuzzlePreset,
+                Offset = preset.tower.muzzles[j].baseOffset,
+            });
+        }
+        towerData.muzzlesData = muzzlesData;
+
         em.AddComponentData(intentEntity, new SpawnVehicleIntent
         {
-            PresetId = configHashName, // Передаем unmanaged ID пресета
+            bodyData = bodyData,
+            towerData = towerData,
+            wheelsData = wheelsData,
             SpawnPosition = spawnPos,
             SpawnRotation = Quaternion.identity,
             IsAddMove = !isExistMoveEntity,

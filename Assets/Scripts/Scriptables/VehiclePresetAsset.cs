@@ -19,8 +19,8 @@ public class VehiclePresetAsset : ScriptableObject
     [Tooltip("Выбранная оружейная башня")]
     public TowerPartAsset tower;
 
-    [Tooltip("Выбранный тип ствола пушки")]
-    public MuzzlePartAsset muzzle;
+    //[Tooltip("Выбранный тип ствола пушки")]
+    //public MuzzlePartAsset muzzle;
 
     [Header("Конфигурация ходовых слотов подвески")]
     [Tooltip("Пресет колес")]

@@ -52,7 +52,8 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             // Уничтожаем сущность задачи, так как корень готов к наполнению чанками
             ecb.DestroyEntity(taskEntity);
 
-            uint modelHash = task.ValueRO.ConfigHashName;
+            //===============Body===========================
+            uint modelHashName = task.ValueRO.bodyData.HashName;
             //#if UNITY_EDITOR
             //            UnityEngine.Debug.LogWarning($"rootNetworkId={rootNetworkId}, rootGhostInstance.ghostId={rootGhostInstance.ghostId}");
             //#endif
@@ -60,10 +61,10 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             LocalTransform rootTransform = SystemAPI.GetComponent<LocalTransform>(rootEntity);
 
             // Записываем хэш в компонент данных — теперь Netcode его не сотрет
-            ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHash });
+            ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
 
             // Ищем шаблон в unmanaged-кэше синглтона по хэшу
-            if (!modelCache.Templates.TryGetValue(modelHash, out var template))
+            if (!modelCache.Templates.TryGetValue(modelHashName, out var template))
             {
                 //#if UNITY_EDITOR
                 //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
@@ -76,7 +77,124 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             int totalActiveChunks = chunkCoords.Length;
 
             // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
-            SpawnModelChunks(ref state, ref ecb, in prefabConfig.ChunkGhostPrefab, rootNetworkId, modelHash, in chunkCoords, totalActiveChunks, in rootTransform, ref rootEntity, ref template);
+            SpawnModelChunks(
+                ref state,
+                ref ecb,
+                in prefabConfig.ChunkGhostPrefab,
+                rootNetworkId,
+                modelHashName,
+                in chunkCoords,
+                totalActiveChunks,
+                in rootTransform,
+                ref rootEntity,
+                ref template,
+                float3.zero
+                );
+
+            //===============Tower===========================
+            modelHashName = task.ValueRO.towerData.HashName;
+            ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+
+            // Ищем шаблон в unmanaged-кэше синглтона по хэшу
+            if (!modelCache.Templates.TryGetValue(modelHashName, out template))
+            {
+                //#if UNITY_EDITOR
+                //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
+                //#endif
+                continue;
+            }
+
+            // Извлекаем массив координат чанков текущей модели
+            chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
+            totalActiveChunks = chunkCoords.Length;
+
+            // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
+            SpawnModelChunks(
+                ref state,
+                ref ecb,
+                in prefabConfig.ChunkGhostPrefab,
+                rootNetworkId,
+                modelHashName,
+                in chunkCoords,
+                totalActiveChunks,
+                in rootTransform,
+                ref rootEntity,
+                ref template,
+                float3.zero);
+
+
+            //===============Muzzle===========================
+            for (int i = 0; i < task.ValueRO.towerData.muzzlesData.Length; i++)
+            {
+                var muzzleData = task.ValueRO.towerData.muzzlesData[i];
+
+                modelHashName = muzzleData.HashName;
+                ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+
+                // Ищем шаблон в unmanaged-кэше синглтона по хэшу
+                if (!modelCache.Templates.TryGetValue(modelHashName, out template))
+                {
+                    //#if UNITY_EDITOR
+                    //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
+                    //#endif
+                    continue;
+                }
+
+                // Извлекаем массив координат чанков текущей модели
+                chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
+                totalActiveChunks = chunkCoords.Length;
+
+                // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
+                SpawnModelChunks(
+                    ref state,
+                    ref ecb,
+                    in prefabConfig.ChunkGhostPrefab,
+                    rootNetworkId,
+                    modelHashName,
+                    in chunkCoords,
+                    totalActiveChunks,
+                    in rootTransform,
+                    ref rootEntity,
+                    ref template,
+                    float3.zero);
+            }
+
+            //===============Wheels===========================
+            for (int i = 0; i < task.ValueRO.wheelsData.WheelsSlots.Length; i++)
+            {
+                var wheelData = task.ValueRO.wheelsData.WheelsSlots[i];
+
+                modelHashName = wheelData.HashName;
+                ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+
+                // Ищем шаблон в unmanaged-кэше синглтона по хэшу
+                if (!modelCache.Templates.TryGetValue(modelHashName, out template))
+                {
+                    //#if UNITY_EDITOR
+                    //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
+                    //#endif
+                    continue;
+                }
+
+                // Извлекаем массив координат чанков текущей модели
+                chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
+                totalActiveChunks = chunkCoords.Length;
+
+                // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
+                SpawnModelChunks(
+                    ref state,
+                    ref ecb,
+                    in prefabConfig.ChunkGhostPrefab,
+                    rootNetworkId,
+                    modelHashName,
+                    in chunkCoords,
+                    totalActiveChunks,
+                    in rootTransform,
+                    ref rootEntity,
+                    ref template,
+                    float3.zero
+                    );
+            }
         }
     }
 
@@ -91,7 +209,8 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
         int totalActiveChunks,
         in LocalTransform rootTransform,
         ref Entity rootEntity, // Принимаем Entity родительского корня для заполнения его буфера
-        ref ModelRuntimeTemplate model) // Передаем габариты модели (например, X:4, Y:2, Z:6 чанков)
+        ref ModelRuntimeTemplate model, // Передаем габариты модели (например, X:4, Y:2, Z:6 чанков)
+        float3 offset)
     {
         // 1. ВЫЧИСЛЯЕМ СМЕЩЕНИЕ ПИВОТА В МЕТРАХ (размер чанка = 32 вокселя * 1.0f)
         // Делим размеры на 2.0f, чтобы найти идеальный геометрический центр кузова
@@ -112,7 +231,7 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
 
             // 2. Вычисляем начальные мировые координаты чанка на сервере (для Relevance видимости)
             float3 localOffset = (float3)localChunkCoord * 32.0f * 1.0f;
-            float3 localOffsetWithPivot = localOffset - pivotOffset;
+            float3 localOffsetWithPivot = localOffset - pivotOffset + offset;
             //float3 worldChunkPos = math.transform(rootTransform.ToMatrix(), localOffset);
 
             ecb.AddComponent(chunkEntity, new LocalTransform

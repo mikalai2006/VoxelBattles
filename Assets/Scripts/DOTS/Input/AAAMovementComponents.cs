@@ -8,11 +8,11 @@ using Unity.NetCode;
 //    [GhostField(Quantization = 100)] // Этот атрибут заставит Netcode синхронизировать ввод!
 //    public float2 MoveInput;
 //}
-[GhostComponent]
+//[GhostComponent]
 public struct AAA_InputComponent : IInputComponentData
 {
     // Оставляем только чистое поле типа byte для идеальной сетевой репликации
-    [GhostField]
+    //[GhostField]
     public byte ButtonsMask;
 }
 
@@ -22,6 +22,9 @@ public struct InputStateSingleton : IComponentData
 {
     public float2 MoveInput;
     public bool SwitchTargetTriggered;
+
+    //public float3 ShootDirection;
+    public bool ShootTriggered;
 }
 
 // Компонент настроек движения

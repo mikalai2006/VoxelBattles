@@ -3,10 +3,11 @@ using System.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class InputBridgeSystem : MonoBehaviour
 {
-    private InputSystem_Actions _gameInput;
+    private InputSystem_Actions controls;
     private EntityQuery _inputQuery;
     private EntityManager _entityManager;
     private World _targetWorld;
@@ -15,17 +16,48 @@ public class InputBridgeSystem : MonoBehaviour
     private Vector2 _moveInput;
     private bool _switchTriggered;
     [SerializeField] private bool _isInitialized = false;
+    private bool _shootPressedThisFrame;
 
-    private void Awake() => _gameInput = new InputSystem_Actions();
+    private void Awake()
+    {
+        controls = new InputSystem_Actions();
+    }
+
+    private void OnEnable()
+    {
+        controls.Player.Enable();
+    }
+
+    private void OnDisable()
+    {
+        controls.Player.Disable();
+    }
 
     private void Start()
     {
         //if (_isInitialized) return;
 #if !UNITY_SERVER
+        // фиксируем выстрел
+        controls.Player.Attack.performed += OnAttackPerformed;
+
+        // Фиксируем перемещение
+        controls.Player.Move.performed += OnMove;
+        controls.Player.Move.canceled += OnCancelMove;
+        // Фиксируем нажатие кнопки смены сущности
+        controls.Player.Switch.performed += OnSwitch;
+
         StartCoroutine(WaitForInitialize());
 #endif
     }
 
+    private void OnDestroy()
+    {
+        controls.Player.Attack.performed -= OnAttackPerformed;
+
+        controls.Player.Move.performed -= OnMove;
+        controls.Player.Move.canceled -= OnCancelMove;
+        controls.Player.Switch.performed -= OnSwitch;
+    }
     private IEnumerator WaitForInitialize()
     {
         if (_isInitialized)
@@ -72,21 +104,6 @@ public class InputBridgeSystem : MonoBehaviour
         _isInitialized = true;
     }
 
-    private void OnEnable()
-    {
-        _gameInput.Player.Enable();
-        _gameInput.Player.Move.performed += ctx => _moveInput = ctx.ReadValue<Vector2>();
-        _gameInput.Player.Move.canceled += ctx => _moveInput = Vector2.zero;
-
-        // Фиксируем нажатие кнопки смены сущности
-        _gameInput.Player.Switch.performed += ctx => _switchTriggered = true;
-    }
-
-    private void OnDisable()
-    {
-        _gameInput.Player.Disable();
-    }
-
     private void Update()
     {
         if (_targetWorld == null || !_targetWorld.IsCreated) return;
@@ -96,10 +113,32 @@ public class InputBridgeSystem : MonoBehaviour
         {
             inputState.MoveInput = _moveInput;
             inputState.SwitchTargetTriggered = _switchTriggered;
+            inputState.ShootTriggered = _shootPressedThisFrame;
             _inputQuery.SetSingleton(inputState);
 
             // Сбрасываем триггер после отправки в ECS, чтобы он сработал как "OnKeyDown"
             _switchTriggered = false;
+            _shootPressedThisFrame = false;
         }
+    }
+
+    private void OnAttackPerformed(InputAction.CallbackContext ctx)
+    {
+        _shootPressedThisFrame = true;
+    }
+
+    private void OnSwitch(InputAction.CallbackContext ctx)
+    {
+        _switchTriggered = true;
+    }
+
+    private void OnMove(InputAction.CallbackContext ctx)
+    {
+        _moveInput = ctx.ReadValue<Vector2>();
+    }
+
+    private void OnCancelMove(InputAction.CallbackContext ctx)
+    {
+        _moveInput = Vector2.zero;
     }
 }

@@ -244,13 +244,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TestPoolEntity
   poolSize: 100
   maxModelBounds: {x: 32, y: 32, z: 32}
+  voxelModelCacheManager: {fileID: 1338795806}
   rows: 5
   columns: 5
   spacing: 150
   PhysicChunkMode: 0
   _isInitialized: 0
-  presetToAssemble: {fileID: 0}
-  testSOToAssemble: {fileID: 11400000, guid: ee4381e95ec96b1448ecec72dc71e7ca, type: 2}
 --- !u!1 &583949679
 GameObject:
   m_ObjectHideFlags: 0
@@ -640,6 +639,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VoxelClickDestroyer
   destructionRadius: 10
   _mainCamera: {fileID: 660498935}
+  shootPressedThisFrame: 0
 --- !u!1 &931557308
 GameObject:
   m_ObjectHideFlags: 0
@@ -715,12 +715,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d22350e36dc647840ba3bf344755472a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VoxelModelCacheManager
-  configs:
-  - {fileID: 11400000, guid: ee4381e95ec96b1448ecec72dc71e7ca, type: 2}
-  - {fileID: 11400000, guid: 29ae94c2842e6014ba46ca6d11732cd8, type: 2}
-  - {fileID: 11400000, guid: 87af03f9706bacd4f85e730b29f91ea4, type: 2}
-  - {fileID: 11400000, guid: e268033697d712349afebcaf3d14d10e, type: 2}
-  - {fileID: 11400000, guid: 9cd3d04541add1e45b27448a63b766fe, type: 2}
+  configsVehicles:
+  - {fileID: 11400000, guid: cc3c333ffcae06b4583d18e5767bbba2, type: 2}
 --- !u!4 &1338795807
 Transform:
   m_ObjectHideFlags: 0

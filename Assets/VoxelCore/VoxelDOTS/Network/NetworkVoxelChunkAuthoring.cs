@@ -40,6 +40,8 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
 
             AddComponent<NetworkParent>(entity);
 
+            AddComponent<PendingChunkToNode>(entity);
+
             //// 3. йнлонмемрш-оепейкчвюрекх юйрхбмнярх х яреирш
             //AddComponent<ChunkActiveState>(entity);
             //AddComponent<ChunkPhysicsActiveState>(entity);

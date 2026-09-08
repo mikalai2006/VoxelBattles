@@ -15,7 +15,11 @@ using Unity.Transforms;
 public struct VoxelSpawnTaskComponent : IComponentData
 {
     public Entity TargetRootEntity; // На какой корень привязать чанки
-    public uint ConfigHashName;     // Хэш модели
+    public BodyData bodyData;
+    public TowerData towerData;
+    public WheelsData wheelsData;
+    public float3 SpawnPosition;
+    public quaternion SpawnRotation; // Поворот объекта
 }
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -35,7 +39,7 @@ public partial struct ServerSpawnRpcHandlerSystem : ISystem
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
         var prefabConfig = SystemAPI.GetSingleton<VoxelGhostPrefabConfig>();
 
-        foreach (var (rpc, requestSource, rpcEntity) in SystemAPI.Query<RefRO<RequestSpawnModelRpc>, RefRO<ReceiveRpcCommandRequest>>().WithEntityAccess())
+        foreach (var (rpc, requestSource, rpcEntity) in SystemAPI.Query<RefRO<RequestSpawnVehicleRpc>, RefRO<ReceiveRpcCommandRequest>>().WithEntityAccess())
         {
             ecb.DestroyEntity(rpcEntity);
 
@@ -75,7 +79,11 @@ public partial struct ServerSpawnRpcHandlerSystem : ISystem
             ecb.AddComponent(taskEntity, new VoxelSpawnTaskComponent
             {
                 TargetRootEntity = rootEntity,
-                ConfigHashName = (uint)rpc.ValueRO.ConfigHashName // Используйте ваше точное имя поля из RPC
+                bodyData = rpc.ValueRO.bodyData,
+                towerData = rpc.ValueRO.towerData,
+                wheelsData = rpc.ValueRO.wheelsData,
+                SpawnPosition = rpc.ValueRO.SpawnPosition,
+                SpawnRotation = rpc.ValueRO.SpawnRotation,
             });
             //#if UNITY_EDITOR
             //            UnityEngine.Debug.LogWarning($"[Server] Spawn task created for hash={rpc.ValueRO.ConfigHashName}");

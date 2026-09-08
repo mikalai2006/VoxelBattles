@@ -5,7 +5,10 @@ using Unity.NetCode;
 // RPC-запрос от клиента к серверу: "Хочу создать модель X в точке Y"
 public struct RequestSpawnModelRpc : IRpcCommand
 {
-    public uint ConfigHashName; // Хэш модели (какую модель спавнить)
+    public uint ConfigHashNameBody; // Хэш модели (какую модель спавнить)
+    public uint ConfigHashNameTower;
+    public uint ConfigHashNameMuzzle;
+    public uint ConfigHashNameWheels;
     public float3 SpawnPosition; // Где заспавнить в мире
     public quaternion SpawnRotation; // Поворот объекта
 }

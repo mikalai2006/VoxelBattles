@@ -1,5 +1,7 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 
 [BurstCompile]
@@ -25,15 +27,55 @@ public partial struct ClientSendSpawnVehicleSystem : ISystem
             // 1. Создаем сущность сетевого RPC запроса
             Entity rpcEntity = ecb.CreateEntity();
 
-            ecb.AddComponent(rpcEntity, new RequestSpawnVehicleRpc
+            FixedList512Bytes<NodeData> nodes = new FixedList512Bytes<NodeData>();
+            FixedList512Bytes<ChunkData> chunks = new FixedList512Bytes<ChunkData>();
+
+            //==================BODY=====================
+            byte bodyNodeId = 1;
+            var bodyNode = new NodeData
             {
-                //ConfigHashNameMuzzle = intent.ValueRO.ConfigHashNameMuzzle,
-                //ConfigHashNameBody = intent.ValueRO.ConfigHashNameBody,
-                //ConfigHashNameTower = intent.ValueRO.ConfigHashNameTower,
-                //ConfigHashNameWheels = intent.ValueRO.ConfigHashNameWheels,
-                towerData = intent.ValueRO.towerData,
-                bodyData = intent.ValueRO.bodyData,
-                wheelsData = intent.ValueRO.wheelsData,
+                Offset = new float3(32f, 0, 32f),
+                NodeId = bodyNodeId,
+                TypeCollider = 1,
+                ParentTargetEntity = 0
+            };
+            nodes.Add(bodyNode);
+
+            ChunkData chunkBody = new ChunkData
+            {
+                HashName = intent.ValueRO.bodyData.HashName,
+                ParentNodeId = bodyNodeId // Привязываем чанк к узлу.
+            };
+
+            chunks.Add(chunkBody);
+
+            //==================TOWER=====================
+            byte towerNodeId = 2;
+
+            var towerNode = new NodeData
+            {
+                Offset = float3.zero,
+                NodeId = towerNodeId, // Присваиваем ID узлу.
+                TypeCollider = 0,
+                ParentTargetEntity = bodyNodeId
+            };
+
+            nodes.Add(towerNode);
+
+            ChunkData chunkTower = new ChunkData
+            {
+                HashName = intent.ValueRO.towerData.HashName,
+                ParentNodeId = towerNodeId // Привязываем чанк к узлу.
+            };
+
+            chunks.Add(chunkTower);
+
+
+
+            ecb.AddComponent(rpcEntity, new RequestServerSpawnModelRpc1
+            {
+                nodes = nodes,
+                chunks = chunks,
                 SpawnPosition = intent.ValueRO.SpawnPosition,
                 SpawnRotation = intent.ValueRO.SpawnRotation,
                 //IsAddMove = intent.ValueRO.IsAddMove,

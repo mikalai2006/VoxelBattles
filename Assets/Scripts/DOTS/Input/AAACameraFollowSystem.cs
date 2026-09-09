@@ -21,7 +21,7 @@ public partial struct AAACameraFollowSystem : ISystem
     {
         // Находим локального игрока с активным тегом управления
         foreach (var (transform, isControlled, isLocalOwner) in
-            SystemAPI.Query<RefRO<LocalTransform>, RefRO<IsControlledTag>, EnabledRefRO<GhostOwnerIsLocal>>())
+            SystemAPI.Query<RefRO<LocalTransform>, RefRO<AAA_IsControlledTag>, EnabledRefRO<GhostOwnerIsLocal>>())
         {
             // Если тег управления или владения выключен — пропускаем сущность
             if (!isLocalOwner.ValueRO || isControlled.ValueRO.IsActive == false) continue;

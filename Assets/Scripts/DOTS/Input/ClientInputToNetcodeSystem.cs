@@ -22,7 +22,7 @@ public partial struct ClientInputToNetcodeSystem : ISystem
             uint oldGhostId = 0;
 
             // Ищем текущую активную машину
-            foreach (var (ghostInstance, controlTag, oldEntity) in SystemAPI.Query<RefRO<GhostInstance>, RefRO<IsControlledTag>>()
+            foreach (var (ghostInstance, controlTag, oldEntity) in SystemAPI.Query<RefRO<GhostInstance>, RefRO<AAA_IsControlledTag>>()
                          .WithAll<GhostOwnerIsLocal>().WithEntityAccess())
             {
                 if (controlTag.ValueRO.IsActive)
@@ -34,7 +34,7 @@ public partial struct ClientInputToNetcodeSystem : ISystem
 
             // Собираем все доступные машины игрока
             var availableVehiclesQuery = SystemAPI.QueryBuilder()
-                .WithAll<GhostInstance, IsControlledTag, AAA_MovementComponent>()
+                .WithAll<GhostInstance, AAA_IsControlledTag, AAA_MovementComponent>()
                 .Build();
             var allMyInstances = availableVehiclesQuery.ToComponentDataArray<GhostInstance>(Allocator.Temp);
             var allEntities = availableVehiclesQuery.ToEntityArray(Allocator.Temp);
@@ -50,7 +50,7 @@ public partial struct ClientInputToNetcodeSystem : ISystem
 
             for (int i = 0; i < allMyInstances.Length; i++)
             {
-                if ((uint)allMyInstances[i].ghostId == oldGhostId && SystemAPI.IsComponentEnabled<IsControlledTag>(allEntities[i]))
+                if ((uint)allMyInstances[i].ghostId == oldGhostId && SystemAPI.IsComponentEnabled<AAA_IsControlledTag>(allEntities[i]))
                 {
                     currentIdx = i;
                     break;
@@ -110,7 +110,7 @@ public partial struct ClientInputToNetcodeSystem : ISystem
         // ==========================================
         // 2. AAA-РЕШЕНИЕ: Пишем ТОЛЬКО при реальном изменении ввода активной машины
         // ==========================================
-        foreach (var (inputComponent, controlTag) in SystemAPI.Query<RefRW<AAA_InputComponent>, RefRO<IsControlledTag>>().WithAll<GhostOwnerIsLocal>())
+        foreach (var (inputComponent, controlTag) in SystemAPI.Query<RefRW<AAA_InputComponent>, RefRO<AAA_IsControlledTag>>().WithAll<GhostOwnerIsLocal>())
         {
             // Условие 1: Проверяем, активна ли машина
             if (controlTag.ValueRO.IsActive)

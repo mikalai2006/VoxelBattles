@@ -15,7 +15,7 @@ public struct VoxelVertex
 [BurstCompile]
 public struct MeshGreedyJobSafeDirect : IJob
 {
-    [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;
+    [ReadOnly] public NativeArray<AAA_ChunkDestructionMask>.ReadOnly LiveMask;
     [ReadOnly] public NativeArray<byte> FlattenedModelColors;
     [ReadOnly] public NativeArray<Color32> GlobalPaletteColors;
     public int ChunkOffsetInFlattenedArray;

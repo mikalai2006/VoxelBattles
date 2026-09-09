@@ -103,11 +103,6 @@ MonoBehaviour:
     PrefabType: 7
     SendTypeOptimization: -1
     VariantHash: 0
-  - FullTypeName: IsControlledTag
-    EntityIndex: 0
-    PrefabType: 7
-    SendTypeOptimization: -1
-    VariantHash: 0
   - FullTypeName: Unity.Entities.EntityGuid
     EntityIndex: 0
     PrefabType: 7
@@ -123,8 +118,3 @@ MonoBehaviour:
     PrefabType: 7
     SendTypeOptimization: -1
     VariantHash: 8912562172056573735
-  - FullTypeName: VoxelModelRootData
-    EntityIndex: 0
-    PrefabType: 7
-    SendTypeOptimization: -1
-    VariantHash: 0

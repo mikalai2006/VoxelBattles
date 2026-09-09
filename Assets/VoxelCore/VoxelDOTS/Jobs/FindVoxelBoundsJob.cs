@@ -13,7 +13,7 @@ public struct FindVoxelModelBoundsJob : IJob
     [ReadOnly] public NativeArray<byte> FlattenedModelColors;
 
     // Плоский массив ВСЕХ масок машины (размер = Количество_Чанков * 512)
-    [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;
+    [ReadOnly] public NativeArray<AAA_ChunkDestructionMask>.ReadOnly LiveMask;
 
     public NativeArray<int3> JobStatusRef;
     public float VoxelScale;

@@ -9,13 +9,13 @@ public class NetworkVoxelNodeAuthoring : MonoBehaviour
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
 
-            AddComponent<ChunkIndexComponent>(entity);
+            //// Добавляем unmanaged-компонент, куда сервер при спавне запишет uint хэш модели
+            //AddComponent<AAA_VoxelModelRootData>(entity);
+            AddComponent<AAA_VoxelModelHeader>(entity);
 
-            AddComponent<VoxelModelHeader>(entity);
+            AddComponent<AAA_NetworkParent>(entity);
 
-            AddComponent<NetworkParent>(entity);
-
-            AddComponent<PendingNodeToRoot>(entity);
+            AddComponent<AAA_PendingNodeToRoot>(entity);
         }
     }
 }

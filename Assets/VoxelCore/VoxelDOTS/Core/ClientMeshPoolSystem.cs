@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 
 // Этот компонент — чистая структура. Полностью совместим с Сетью, Ghost-префабами и Burst!
-public struct ChunkMeshLink : IComponentData
+public struct AAA_ChunkMeshLink : IComponentData
 {
     public int PoolInstanceId; // Уникальный ID меша в нашем пуле
 }

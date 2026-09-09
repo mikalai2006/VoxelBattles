@@ -23,7 +23,7 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             // В Entities 1.4.7 вызов AddBuffer гарантирует, что при создании сущности 
             // из префаба на клиенте и сервере под маску 512 ulong сразу зарезервируется unmanaged-память.
             //var maskBuffer =
-            AddBuffer<LocalChunkDestructionMask>(entity);
+            AddBuffer<AAA_ChunkDestructionMask>(entity);
             // ====================================================================
             // ЖЕЛЕЗОБЕТОННЫЙ SAFE ФИКС КРАША ДЕСЕРИАЛИЗАЦИИ NETCODE:
             // Мы обязаны принудительно задать размер буфера прямо в префабе при бейке!
@@ -35,12 +35,12 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             // ====================================================================
 
             // 2. ДОБАВЛЯЕМ РАНТАЙМ-МЕТАДАННЫЕ ЧАНКА (Индексы и связь с моделью)
-            AddComponent<ChunkIndexComponent>(entity);
-            AddComponent<VoxelModelHeader>(entity);
+            AddComponent<AAA_ChunkIndex>(entity);
+            AddComponent<AAA_VoxelModelHeader>(entity);
 
-            AddComponent<NetworkParent>(entity);
+            AddComponent<AAA_NetworkParent>(entity);
 
-            AddComponent<PendingChunkToNode>(entity);
+            AddComponent<AAA_PendingChunkToNode>(entity);
 
             //// 3. КОМПОНЕНТЫ-ПЕРЕКЛЮЧАТЕЛИ АКТИВНОСТИ И СТЕЙТЫ
             //AddComponent<ChunkActiveState>(entity);
@@ -81,12 +81,12 @@ public class NetworkVoxelChunkAuthoring : MonoBehaviour
             AddComponent<ChunkMeshNeedApply>(entity);
             SetComponentEnabled<ChunkMeshNeedApply>(entity, false);
 
-            AddComponent<ChunkSyncTracker>(entity);
+            AddComponent<AAA_ChunkSyncTracker>(entity);
 
             //AddComponent<ChunkMeshData>(entity);
             //SetComponentEnabled<ChunkMeshData>(entity, false);
 
-            AddComponent<ChunkMeshLink>(entity);
+            AddComponent<AAA_ChunkMeshLink>(entity);
         }
     }
 }

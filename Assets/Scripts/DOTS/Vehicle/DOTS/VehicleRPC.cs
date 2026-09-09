@@ -67,3 +67,35 @@ public struct RequestSpawnVehicleRpc : IRpcCommand
     public float3 SpawnPosition; // Где заспавнить в мире
     public quaternion SpawnRotation; // Поворот объекта
 }
+
+/// <summary>
+/// Данные спавна чанков модели.
+/// </summary>
+public struct ChunkData
+{
+    public byte ParentNodeId;
+    public uint HashName;
+    public float3 Offset;
+}
+
+/// <summary>
+/// Данные спавна узла модели.
+/// </summary>
+public struct NodeData
+{
+    public float3 Offset;
+    public byte NodeId;
+    public byte TypeCollider; // 1 - динамика, 0 - статика
+    public uint ParentTargetEntity;
+}
+
+/// <summary>
+/// Данные для спавна модели.
+/// </summary>
+public struct RequestServerSpawnModelRpc1 : IRpcCommand
+{
+    public FixedList512Bytes<NodeData> nodes;
+    public FixedList512Bytes<ChunkData> chunks;
+    public float3 SpawnPosition; // Где заспавнить в мире
+    public quaternion SpawnRotation; // Поворот объекта
+}

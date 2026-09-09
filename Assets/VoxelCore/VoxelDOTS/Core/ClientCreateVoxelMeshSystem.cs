@@ -22,7 +22,7 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
 
     private ComponentLookup<GhostInstance> m_GhostInstanceLookup;
 
-    private BufferTypeHandle<LocalChunkDestructionMask> m_MaskTypeHandle;
+    private BufferTypeHandle<AAA_ChunkDestructionMask> m_MaskTypeHandle;
 
     private NativeList<JobHandle> m_JobHandles;
 
@@ -47,7 +47,7 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
         });
         //}
 
-        m_MaskTypeHandle = state.GetBufferTypeHandle<LocalChunkDestructionMask>(true);
+        m_MaskTypeHandle = state.GetBufferTypeHandle<AAA_ChunkDestructionMask>(true);
 
         m_JobHandles = new NativeList<JobHandle>(16, Allocator.Persistent);
 
@@ -61,9 +61,9 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
         // Создаем неуправляемый массив на 4 элемента
         var queryTypes = new NativeArray<ComponentType>(4, Allocator.Temp);
 
-        queryTypes[0] = ComponentType.ReadOnly<LocalChunkDestructionMask>();
-        queryTypes[1] = ComponentType.ReadOnly<ChunkIndexComponent>();
-        queryTypes[2] = ComponentType.ReadOnly<VoxelModelHeader>();
+        queryTypes[0] = ComponentType.ReadOnly<AAA_ChunkDestructionMask>();
+        queryTypes[1] = ComponentType.ReadOnly<AAA_ChunkIndex>();
+        queryTypes[2] = ComponentType.ReadOnly<AAA_VoxelModelHeader>();
         //queryTypes[3] = ComponentType.Exclude<ChunkActiveState>();
         // Фильтр .WithAll<ChunkMeshNeedCreate>()
         // Так как это IEnableableComponent, он должен присутствовать на сущности и быть Enabled
@@ -190,9 +190,9 @@ public partial struct ClientCreateVoxelMeshSystem : ISystem
         // ЭТАП 1 (BURST): АСИНХРОННЫЙ ПРОЛЕТ ПО ВСЕМ ИЗМЕНИВШИМСЯ ЧАНКАМ
         // ====================================================================
         foreach (var (maskBuffer, chunkIndex, modelHeader, ghostInstance, entity) in SystemAPI.Query<
-                DynamicBuffer<LocalChunkDestructionMask>,
-                RefRO<ChunkIndexComponent>,
-                RefRO<VoxelModelHeader>,
+                DynamicBuffer<AAA_ChunkDestructionMask>,
+                RefRO<AAA_ChunkIndex>,
+                RefRO<AAA_VoxelModelHeader>,
                 RefRO<GhostInstance>
             >()
             .WithAll<ChunkMeshNeedCreate>() // Сущность попадет в выборку, только если у неё присутствует компонент T И он включен (Enabled).

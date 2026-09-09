@@ -13,9 +13,9 @@ public partial struct ServerSendMaskExploded : ISystem
     {
         // Кэшируем запрос для быстрого поиска чанков по их хэш-имени
         m_ChunkQuery = state.GetEntityQuery(
-            ComponentType.ReadOnly<VoxelModelHeader>(),
+            ComponentType.ReadOnly<AAA_VoxelModelHeader>(),
             ComponentType.ReadOnly<GhostInstance>(),
-            ComponentType.ReadOnly<LocalChunkDestructionMask>()
+            ComponentType.ReadOnly<AAA_ChunkDestructionMask>()
         );
     }
 
@@ -41,7 +41,7 @@ public partial struct ServerSendMaskExploded : ISystem
                 {
                     Entity foundChunkEntity = chunkEntities[i];
 
-                    var destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
+                    var destructionMask = state.EntityManager.GetBuffer<AAA_ChunkDestructionMask>(foundChunkEntity);
 
                     ChunkRleSerializer.SendChunkMaskToClient(ref ecb, requestedGhostInstance, destructionMask, rpcSource.SourceConnection);
                     // Нарезаем 512 элементов на 4 RPC пакета

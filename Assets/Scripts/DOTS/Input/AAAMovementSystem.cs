@@ -20,7 +20,7 @@ using Unity.Transforms;
 public partial struct AAAMovementSystem : ISystem
 {
     // Объявляем unmanaged lookup-кэш компонентов для чтения флага активности
-    private ComponentLookup<IsControlledTag> _controlTagLookup;
+    private ComponentLookup<AAA_IsControlledTag> _controlTagLookup;
 
 
     [BurstCompile]
@@ -34,7 +34,7 @@ public partial struct AAAMovementSystem : ISystem
         //state.RequireForUpdate<PhysicsWorldIndex>();
 
         // Инициализируем хранилище lookup при создании системы
-        _controlTagLookup = state.GetComponentLookup<IsControlledTag>(true); // true = ReadOnly
+        _controlTagLookup = state.GetComponentLookup<AAA_IsControlledTag>(true); // true = ReadOnly
 
     }
 
@@ -69,7 +69,7 @@ public partial struct AAAMovementSystem : ISystem
         public NetworkTick CurrentTick;
 
         // Внедряем кэш внутрь джобы с атрибутом ReadOnly
-        [ReadOnly] public ComponentLookup<IsControlledTag> ControlTagLookup;
+        [ReadOnly] public ComponentLookup<AAA_IsControlledTag> ControlTagLookup;
 
         public void Execute(
             Entity entity,

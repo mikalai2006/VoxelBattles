@@ -11,13 +11,13 @@ public partial struct VehiclePredictionOwnershipSystem : ISystem
     {
         // Ищем абсолютно все машины на клиенте, у которых есть ваш тэг контроля
         // (withPresent позволяет видеть сущность, даже если сам IEnableableComponent выключен)
-        foreach (var (ghost, controlledTag, entity) in SystemAPI.Query<RefRO<GhostInstance>, RefRO<IsControlledTag>>()
-                     .WithPresent<IsControlledTag>()
+        foreach (var (ghost, controlledTag, entity) in SystemAPI.Query<RefRO<GhostInstance>, RefRO<AAA_IsControlledTag>>()
+                     .WithPresent<AAA_IsControlledTag>()
                      .WithEntityAccess())
         {
             // Определяем, должен ли этот конкретный клиент сейчас предсказывать машину
             // (Компонент контроля должен быть включен И сетевой флаг IsActive должен быть true)
-            bool shouldPredict = state.EntityManager.IsComponentEnabled<IsControlledTag>(entity) &&
+            bool shouldPredict = state.EntityManager.IsComponentEnabled<AAA_IsControlledTag>(entity) &&
                                  controlledTag.ValueRO.IsActive;
 
             // Если на машине есть встроенный сетевой компонент Simulate

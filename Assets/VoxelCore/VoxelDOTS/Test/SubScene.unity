@@ -135,7 +135,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &839575487
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1118,6 +1118,7 @@ MonoBehaviour:
   sizeVoxel: 1
   prefabBullet: {fileID: 0}
   rootGhostPrefab: {fileID: 1999001081891102342, guid: 3dcdb8de6b95f7c48a9a0d26b105ab8c, type: 3}
+  nodePrefab: {fileID: 1247566513785779861, guid: 26adf6aef03c3784591f7dd1e91cd273, type: 3}
   chunkPrefab: {fileID: 5695732809923464790, guid: 71a1edc5fa9dcc04cbc45d0efc0c710a, type: 3}
 --- !u!4 &1462098857
 Transform:

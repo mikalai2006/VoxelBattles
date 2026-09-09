@@ -346,7 +346,7 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
                 state.EntityManager.SetComponentData(chunkData.TargetEntity, new WorldRenderBounds { Value = chankDataFromSingleton.WorldBounds });
 
                 // Привязываем индекс пула к сущности
-                state.EntityManager.AddComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = nextMeshId });
+                state.EntityManager.AddComponentData(chunkData.TargetEntity, new AAA_ChunkMeshLink { PoolInstanceId = nextMeshId });
             }
             else
             {
@@ -356,7 +356,7 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
 
                 // Сохраняем ссылки на СТАРЫЙ меш и его ID в BRG до переключения
                 var oldInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(chunkData.TargetEntity);
-                ChunkMeshLink oldLink = state.EntityManager.GetComponentData<ChunkMeshLink>(chunkData.TargetEntity);
+                AAA_ChunkMeshLink oldLink = state.EntityManager.GetComponentData<AAA_ChunkMeshLink>(chunkData.TargetEntity);
                 int oldPoolId = oldLink.PoolInstanceId;
 
                 // Мгновенно переключаем рендерер на НОВЫЙ меш (без задержек кадра)
@@ -365,7 +365,7 @@ public partial class ClientRenderVoxelMeshSystem : SystemBase
                 state.EntityManager.SetComponentData(chunkData.TargetEntity, finalMaterialMeshInfo);
 
                 // Запоминаем в ссылке новый ID из пула
-                state.EntityManager.SetComponentData(chunkData.TargetEntity, new ChunkMeshLink { PoolInstanceId = nextMeshId });
+                state.EntityManager.SetComponentData(chunkData.TargetEntity, new AAA_ChunkMeshLink { PoolInstanceId = nextMeshId });
 
                 // ==========================================
                 // 4. ОЧИСТКА: Удаляем старый ID и возвращаем старый меш в пул

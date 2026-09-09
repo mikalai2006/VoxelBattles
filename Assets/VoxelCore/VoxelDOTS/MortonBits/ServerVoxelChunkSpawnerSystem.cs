@@ -17,15 +17,20 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
 public partial struct ServerVoxelChunkSpawnerSystem : ISystem
 {
-    // В файле ServerVoxelChunkSpawnerSystem.cs
+    ComponentLookup<AAA_RootData> rootDataLookup;
+
     public void OnCreate(ref SystemState state)
     {
+        rootDataLookup = SystemAPI.GetComponentLookup<AAA_RootData>(false);
+
         state.RequireForUpdate<VoxelGhostPrefabConfig>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        rootDataLookup.Update(ref state);
+
         var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
@@ -38,30 +43,41 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
         // Итерируемся по активным unmanaged-задачам спавна
         foreach (var (task, taskEntity) in SystemAPI.Query<RefRO<VoxelSpawnTaskComponent>>().WithEntityAccess())
         {
-            Entity rootEntity = task.ValueRO.TargetRootEntity;
+            //Entity rootEntity = task.ValueRO.TargetRootEntity;
+
+            //// Ждем, пока Netcode полностью инициализирует Ghost-префаб и выдаст ему GhostInstance
+            //if (!SystemAPI.HasComponent<GhostInstance>(rootEntity)) continue;
+
+            //// 1. Безопасно извлекаем сетевой инстанс корня в основном потоке системы
+            //GhostInstance rootGhostInstance = SystemAPI.GetComponent<GhostInstance>(rootEntity);
+            //uint rootNetworkId = (uint)rootGhostInstance.ghostId;
+
+            //if (rootNetworkId == 0) continue;
+
+            Entity nodeEntity = task.ValueRO.TargetNodeEntity;
 
             // Ждем, пока Netcode полностью инициализирует Ghost-префаб и выдаст ему GhostInstance
-            if (!SystemAPI.HasComponent<GhostInstance>(rootEntity)) continue;
+            if (!SystemAPI.HasComponent<GhostInstance>(nodeEntity)) continue;
 
-            // 1. Безопасно извлекаем сетевой инстанс корня в основном потоке системы
-            GhostInstance rootGhostInstance = SystemAPI.GetComponent<GhostInstance>(rootEntity);
-            uint rootNetworkId = (uint)rootGhostInstance.ghostId;
+            GhostInstance nodeGhostInstance = SystemAPI.GetComponent<GhostInstance>(nodeEntity);
+            uint nodeNetworkId = (uint)nodeGhostInstance.ghostId;
 
-            if (rootNetworkId == 0) continue;
+            if (nodeNetworkId == 0) continue;
 
             // Уничтожаем сущность задачи, так как корень готов к наполнению чанками
             ecb.DestroyEntity(taskEntity);
 
             //===============Body===========================
-            uint modelHashName = task.ValueRO.bodyData.HashName;
+            uint modelHashName = task.ValueRO.ChunkData.HashName;
             //#if UNITY_EDITOR
             //            UnityEngine.Debug.LogWarning($"rootNetworkId={rootNetworkId}, rootGhostInstance.ghostId={rootGhostInstance.ghostId}");
             //#endif
             // 2. ИСПРАВЛЕНИЕ: Извлекаем актуальный LocalTransform родительского корня
-            LocalTransform rootTransform = SystemAPI.GetComponent<LocalTransform>(rootEntity);
+            LocalTransform nodeTransform = SystemAPI.GetComponent<LocalTransform>(nodeEntity);
 
-            // Записываем хэш в компонент данных — теперь Netcode его не сотрет
-            ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+
+            //ecb.SetComponent(nodeEntity, new AAA_VoxelModelHeader { ConfigHashName = modelHashName });
+            //ecb.SetComponent(nodeEntity, new AAA_NetworkParent { ParentGhostId = rootNetworkId });
 
             // Ищем шаблон в unmanaged-кэше синглтона по хэшу
             if (!modelCache.Templates.TryGetValue(modelHashName, out var template))
@@ -76,125 +92,151 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             var chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
             int totalActiveChunks = chunkCoords.Length;
 
+
+            int parentGhostId = 0;
+            // записываем кол-во чанков.
+            if (rootDataLookup.HasComponent(nodeEntity))
+            {
+                var controller = rootDataLookup[nodeEntity];
+
+                controller.countChunks += totalActiveChunks;
+
+                rootDataLookup[nodeEntity] = controller;
+
+                if (controller.RootEntity != Entity.Null)
+                {
+                    parentGhostId = SystemAPI.GetComponent<GhostInstance>(controller.RootEntity).ghostId;
+                }
+            }
+
+
+            GhostInstance targetGhostInstance = SystemAPI.GetComponent<GhostInstance>(nodeEntity);
+            // Записываем хэш в компонент данных — теперь Netcode его не сотрет
+            ecb.SetComponent(nodeEntity, new AAA_VoxelModelRootData
+            {
+                ConfigHashName = modelHashName,
+                ParentGhostId = (uint)parentGhostId
+            });
+
             // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
             SpawnModelChunks(
                 ref state,
                 ref ecb,
                 in prefabConfig.ChunkGhostPrefab,
-                rootNetworkId,
+                nodeNetworkId,
                 modelHashName,
                 in chunkCoords,
                 totalActiveChunks,
-                in rootTransform,
-                ref rootEntity,
+                in nodeTransform,
+                ref nodeEntity,
                 ref template,
                 float3.zero
                 );
 
-            //===============Tower===========================
-            modelHashName = task.ValueRO.towerData.HashName;
-            ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+            ////===============Tower===========================
+            //modelHashName = task.ValueRO.towerData.HashName;
+            //ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
 
-            // Ищем шаблон в unmanaged-кэше синглтона по хэшу
-            if (!modelCache.Templates.TryGetValue(modelHashName, out template))
-            {
-                //#if UNITY_EDITOR
-                //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
-                //#endif
-                continue;
-            }
+            //// Ищем шаблон в unmanaged-кэше синглтона по хэшу
+            //if (!modelCache.Templates.TryGetValue(modelHashName, out template))
+            //{
+            //    //#if UNITY_EDITOR
+            //    //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
+            //    //#endif
+            //    continue;
+            //}
 
-            // Извлекаем массив координат чанков текущей модели
-            chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
-            totalActiveChunks = chunkCoords.Length;
+            //// Извлекаем массив координат чанков текущей модели
+            //chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
+            //totalActiveChunks = chunkCoords.Length;
 
-            // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
-            SpawnModelChunks(
-                ref state,
-                ref ecb,
-                in prefabConfig.ChunkGhostPrefab,
-                rootNetworkId,
-                modelHashName,
-                in chunkCoords,
-                totalActiveChunks,
-                in rootTransform,
-                ref rootEntity,
-                ref template,
-                float3.zero);
+            //// Передаем rootTransform через модификатор in в Burst-метод генерации подсети
+            //SpawnModelChunks(
+            //    ref state,
+            //    ref ecb,
+            //    in prefabConfig.ChunkGhostPrefab,
+            //    rootNetworkId,
+            //    modelHashName,
+            //    in chunkCoords,
+            //    totalActiveChunks,
+            //    in rootTransform,
+            //    ref rootEntity,
+            //    ref template,
+            //    float3.zero);
 
 
-            //===============Muzzle===========================
-            for (int i = 0; i < task.ValueRO.towerData.muzzlesData.Length; i++)
-            {
-                var muzzleData = task.ValueRO.towerData.muzzlesData[i];
+            ////===============Muzzle===========================
+            //for (int i = 0; i < task.ValueRO.towerData.muzzlesData.Length; i++)
+            //{
+            //    var muzzleData = task.ValueRO.towerData.muzzlesData[i];
 
-                modelHashName = muzzleData.HashName;
-                ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+            //    modelHashName = muzzleData.HashName;
+            //    ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
 
-                // Ищем шаблон в unmanaged-кэше синглтона по хэшу
-                if (!modelCache.Templates.TryGetValue(modelHashName, out template))
-                {
-                    //#if UNITY_EDITOR
-                    //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
-                    //#endif
-                    continue;
-                }
+            //    // Ищем шаблон в unmanaged-кэше синглтона по хэшу
+            //    if (!modelCache.Templates.TryGetValue(modelHashName, out template))
+            //    {
+            //        //#if UNITY_EDITOR
+            //        //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
+            //        //#endif
+            //        continue;
+            //    }
 
-                // Извлекаем массив координат чанков текущей модели
-                chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
-                totalActiveChunks = chunkCoords.Length;
+            //    // Извлекаем массив координат чанков текущей модели
+            //    chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
+            //    totalActiveChunks = chunkCoords.Length;
 
-                // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
-                SpawnModelChunks(
-                    ref state,
-                    ref ecb,
-                    in prefabConfig.ChunkGhostPrefab,
-                    rootNetworkId,
-                    modelHashName,
-                    in chunkCoords,
-                    totalActiveChunks,
-                    in rootTransform,
-                    ref rootEntity,
-                    ref template,
-                    float3.zero);
-            }
+            //    // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
+            //    SpawnModelChunks(
+            //        ref state,
+            //        ref ecb,
+            //        in prefabConfig.ChunkGhostPrefab,
+            //        rootNetworkId,
+            //        modelHashName,
+            //        in chunkCoords,
+            //        totalActiveChunks,
+            //        in rootTransform,
+            //        ref rootEntity,
+            //        ref template,
+            //        float3.zero);
+            //}
 
-            //===============Wheels===========================
-            for (int i = 0; i < task.ValueRO.wheelsData.WheelsSlots.Length; i++)
-            {
-                var wheelData = task.ValueRO.wheelsData.WheelsSlots[i];
+            ////===============Wheels===========================
+            //for (int i = 0; i < task.ValueRO.wheelsData.WheelsSlots.Length; i++)
+            //{
+            //    var wheelData = task.ValueRO.wheelsData.WheelsSlots[i];
 
-                modelHashName = wheelData.HashName;
-                ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
+            //    modelHashName = wheelData.HashName;
+            //    ecb.SetComponent(rootEntity, new VoxelModelRootData { ConfigHashName = modelHashName });
 
-                // Ищем шаблон в unmanaged-кэше синглтона по хэшу
-                if (!modelCache.Templates.TryGetValue(modelHashName, out template))
-                {
-                    //#if UNITY_EDITOR
-                    //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
-                    //#endif
-                    continue;
-                }
+            //    // Ищем шаблон в unmanaged-кэше синглтона по хэшу
+            //    if (!modelCache.Templates.TryGetValue(modelHashName, out template))
+            //    {
+            //        //#if UNITY_EDITOR
+            //        //                UnityEngine.Debug.LogError($"[Voxel Server]: Модель с хэшем {modelHash} не найдена в кэше при спавне чанков!");
+            //        //#endif
+            //        continue;
+            //    }
 
-                // Извлекаем массив координат чанков текущей модели
-                chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
-                totalActiveChunks = chunkCoords.Length;
+            //    // Извлекаем массив координат чанков текущей модели
+            //    chunkCoords = template.ChunkCoordToOrderIndexMap.GetKeyArray(Allocator.Temp);
+            //    totalActiveChunks = chunkCoords.Length;
 
-                // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
-                SpawnModelChunks(
-                    ref state,
-                    ref ecb,
-                    in prefabConfig.ChunkGhostPrefab,
-                    rootNetworkId,
-                    modelHashName,
-                    in chunkCoords,
-                    totalActiveChunks,
-                    in rootTransform,
-                    ref rootEntity,
-                    ref template,
-                    float3.zero
-                    );
-            }
+            //    // Передаем rootTransform через модификатор in в Burst-метод генерации подсети
+            //    SpawnModelChunks(
+            //        ref state,
+            //        ref ecb,
+            //        in prefabConfig.ChunkGhostPrefab,
+            //        rootNetworkId,
+            //        modelHashName,
+            //        in chunkCoords,
+            //        totalActiveChunks,
+            //        in rootTransform,
+            //        ref rootEntity,
+            //        ref template,
+            //        float3.zero
+            //        );
+            //}
         }
     }
 
@@ -242,11 +284,11 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             });
 
             // 3. Прописываем метаданные для Presentation-конвейера
-            ecb.AddComponent(chunkEntity, new ChunkIndexComponent { Value = localChunkCoord });
-            ecb.AddComponent(chunkEntity, new VoxelModelHeader { ConfigHashName = configHash });
+            ecb.AddComponent(chunkEntity, new AAA_ChunkIndex { Value = localChunkCoord });
+            ecb.AddComponent(chunkEntity, new AAA_VoxelModelHeader { ConfigHashName = configHash });
 
             // 4. Локальный серверный буфер маски разрушений
-            var maskBuffer = ecb.SetBuffer<LocalChunkDestructionMask>(chunkEntity);
+            var maskBuffer = ecb.SetBuffer<AAA_ChunkDestructionMask>(chunkEntity);
             // Мгновенно выделяем память под 512 элементов без оверхеда на Add()
             maskBuffer.ResizeUninitialized(512);
             //// Быстрое заполнение памяти
@@ -284,7 +326,7 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
                 }
 
                 // Записываем собранную маску 64 вокселей в буфер чанка
-                maskBuffer[m] = new LocalChunkDestructionMask { Value = chunkMaskValue };
+                maskBuffer[m] = new AAA_ChunkDestructionMask { Value = chunkMaskValue };
             }
 
             //maskBuffer.Clear();
@@ -304,7 +346,7 @@ public partial struct ServerVoxelChunkSpawnerSystem : ISystem
             // Внедряем компонент Parent, связывая чанк с корнем машины
             ecb.AddComponent(chunkEntity, new Parent { Value = rootEntity });
 
-            ecb.AddComponent(chunkEntity, new NetworkParent { ParentGhostId = rootNetworkId });
+            ecb.AddComponent(chunkEntity, new AAA_NetworkParent { ParentGhostId = rootNetworkId });
             //// СВЯЗЫВАЕМ ИЕРАРХИЮ ДЛЯ СЕТИ (Unity Netcode)
             //// Добавляем маркер и регистрируем чанк в сетевой группе корня
             //ecb.AddComponent<GhostChildEntity>(chunkEntity); //

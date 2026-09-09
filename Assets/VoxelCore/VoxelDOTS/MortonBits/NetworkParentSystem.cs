@@ -38,7 +38,7 @@ public partial struct NetworkParentSystem : ISystem
         var ghostEntities = allGhostsQuery.ToEntityArray(Allocator.Temp);
 
         // 2. Ищем чанки, требующие привязки к родителю
-        foreach (var (netParent, modelHeader, chunkEntity) in SystemAPI.Query<RefRO<NetworkParent>, RefRO<VoxelModelHeader>>()
+        foreach (var (netParent, modelHeader, chunkEntity) in SystemAPI.Query<RefRO<AAA_NetworkParent>, RefRO<AAA_VoxelModelHeader>>()
                      .WithNone<Parent>()
                      .WithEntityAccess())
         {
@@ -64,7 +64,7 @@ public partial struct NetworkParentSystem : ISystem
             // 4. Если машина нашлась в мире клиента, связываем их стандартным Parent
             if (foundVehicleEntity != Entity.Null && state.EntityManager.Exists(foundVehicleEntity))
             {
-                var rootData = SystemAPI.GetComponent<VoxelModelHeader>(chunkEntity);
+                var rootData = SystemAPI.GetComponent<AAA_VoxelModelHeader>(chunkEntity);
                 var ghostInstanceComponent = SystemAPI.GetComponent<GhostInstance>(chunkEntity);
                 // Ищем шаблон в unmanaged-кэше синглтона по хэшу
                 if (!modelCache.Templates.TryGetValue(rootData.ConfigHashName, out var template))
@@ -107,9 +107,9 @@ public partial struct NetworkParentSystem : ISystem
 
                 ecb.AppendToBuffer(foundVehicleEntity, new LinkedEntityGroup { Value = chunkEntity });
 
-                if (SystemAPI.HasComponent<ChunkIndexComponent>(chunkEntity))
+                if (SystemAPI.HasComponent<AAA_ChunkIndex>(chunkEntity))
                 {
-                    var chunkIndex = SystemAPI.GetComponent<ChunkIndexComponent>(chunkEntity);
+                    var chunkIndex = SystemAPI.GetComponent<AAA_ChunkIndex>(chunkEntity);
 
                     //// Математически восстанавливаем чистый локальный оффсет
                     //float3 localOffset = (float3)chunkIndex.Value * 32.0f * 1.0f;

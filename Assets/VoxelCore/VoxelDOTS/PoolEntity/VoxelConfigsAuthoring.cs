@@ -12,6 +12,7 @@ public struct VoxelPrefabConfig : IComponentData
 public struct VoxelGhostPrefabConfig : IComponentData
 {
     public Entity RootGhostPrefab;
+    public Entity NodeGhostPrefab;
     public Entity ChunkGhostPrefab;
 }
 
@@ -58,6 +59,7 @@ public class VoxelConfigsAuthoring : MonoBehaviour
 
     [Header("Новые Сетевые Префабы (Архитектура Масок)")]
     public GameObject rootGhostPrefab;
+    public GameObject nodePrefab;
     public GameObject chunkPrefab;
 
     public class Baker : Baker<VoxelConfigsAuthoring>
@@ -91,6 +93,7 @@ public class VoxelConfigsAuthoring : MonoBehaviour
             if (authoring.rootGhostPrefab != null && authoring.chunkPrefab != null)
             {
                 Entity rootPrefabEntity = GetEntity(authoring.rootGhostPrefab, TransformUsageFlags.Dynamic);
+                Entity nodePrefabEntity = GetEntity(authoring.nodePrefab, TransformUsageFlags.Dynamic);
                 Entity chunkPrefabEntity = GetEntity(authoring.chunkPrefab, TransformUsageFlags.Dynamic);
                 Entity bulletPrefabEntity = GetEntity(authoring.prefabBullet, TransformUsageFlags.Dynamic);
 
@@ -98,7 +101,8 @@ public class VoxelConfigsAuthoring : MonoBehaviour
                 AddComponent(entity, new VoxelGhostPrefabConfig
                 {
                     RootGhostPrefab = rootPrefabEntity,
-                    ChunkGhostPrefab = chunkPrefabEntity
+                    ChunkGhostPrefab = chunkPrefabEntity,
+                    NodeGhostPrefab = nodePrefabEntity,
                 });
                 // Записываем их в чистый синглтон VoxelGhostPrefabConfig
                 AddComponent(entity, new VoxelPrefabConfig

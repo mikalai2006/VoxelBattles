@@ -13,9 +13,9 @@ public partial struct ClientHandleMaskReplySystem : ISystem
         // Кэшируем запрос для быстрого поиска локальных чанков на клиенте по хэшу.
         // Ищем чанки, у которых уже есть буфер маски разрушений.
         m_ChunkQuery = state.GetEntityQuery(
-            ComponentType.ReadOnly<VoxelModelHeader>(),
+            ComponentType.ReadOnly<AAA_VoxelModelHeader>(),
             ComponentType.ReadOnly<GhostInstance>(),
-            ComponentType.ReadWrite<LocalChunkDestructionMask>()
+            ComponentType.ReadWrite<AAA_ChunkDestructionMask>()
         );
     }
 
@@ -47,7 +47,7 @@ public partial struct ClientHandleMaskReplySystem : ISystem
                     if (state.EntityManager.Exists(foundChunkEntity))
                     {
                         // Получаем доступ к буферу маски конкретного чанка
-                        var buffer = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(foundChunkEntity);
+                        var buffer = state.EntityManager.GetBuffer<AAA_ChunkDestructionMask>(foundChunkEntity);
 
 
                         // Гарантируем размер буфера в 512 элементов
@@ -60,30 +60,30 @@ public partial struct ClientHandleMaskReplySystem : ISystem
                         int startOffset = replyData.ChunkIndex * 128;
                         for (int j = 0; j < replyData.CompressedBytes.Length; j++)
                         {
-                            buffer[startOffset + j] = new LocalChunkDestructionMask { Value = replyData.CompressedBytes[j] };
+                            buffer[startOffset + j] = new AAA_ChunkDestructionMask { Value = replyData.CompressedBytes[j] };
                         }
 
                         // Работаем с трекером кусков
                         byte currentBitmask = 0;
                         // Используем SystemAPI.HasComponent - он проверяет актуальное состояние на текущую микросекунду
-                        if (SystemAPI.HasComponent<ChunkSyncTracker>(foundChunkEntity))
+                        if (SystemAPI.HasComponent<AAA_ChunkSyncTracker>(foundChunkEntity))
                         {
                             // Используем SystemAPI.GetComponent - он мгновенно считывает самую свежую запись
-                            currentBitmask = SystemAPI.GetComponent<ChunkSyncTracker>(foundChunkEntity).ReceivedChunksBitmask;
+                            currentBitmask = SystemAPI.GetComponent<AAA_ChunkSyncTracker>(foundChunkEntity).ReceivedChunksBitmask;
                         }
 
                         // Добавляем текущий индекс куска в битовую маску
                         currentBitmask |= (byte)(1 << replyData.ChunkIndex);
 
                         // Обновляем значение трекера
-                        state.EntityManager.SetComponentData(foundChunkEntity, new ChunkSyncTracker { ReceivedChunksBitmask = currentBitmask });
+                        state.EntityManager.SetComponentData(foundChunkEntity, new AAA_ChunkSyncTracker { ReceivedChunksBitmask = currentBitmask });
 
                         // Если маска равна 15 (биты 00001111 установлены -> получены куски 0, 1, 2, 3)
                         if (currentBitmask == 15)
                         {
                             // Сигнализируем системе рендеринга, что пора собирать меш
                             ecb.SetComponentEnabled<ChunkMeshNeedCreate>(foundChunkEntity, true);
-                            ecb.SetComponent(foundChunkEntity, new ChunkSyncTracker { ReceivedChunksBitmask = 0 });
+                            ecb.SetComponent(foundChunkEntity, new AAA_ChunkSyncTracker { ReceivedChunksBitmask = 0 });
                         }
 
                         //                        // Распаковываем RLE в буфер этого чанка

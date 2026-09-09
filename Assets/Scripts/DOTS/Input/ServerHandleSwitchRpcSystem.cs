@@ -12,7 +12,7 @@ public struct RequestVehicleSwitchRpc : IRpcCommand
 
 // ТЕГ-МАРКЕР
 [GhostComponent]
-public struct IsControlledTag : IComponentData, IEnableableComponent
+public struct AAA_IsControlledTag : IComponentData, IEnableableComponent
 {
     // Помечаем поле атрибутом репликации. 
     // Изменение этого флага на сервере Netcode гарантированно пустит в сеть!
@@ -96,7 +96,7 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
             // Отключение старой машины
             if (oldVehicleEntity != Entity.Null)
             {
-                ecb.SetComponent(oldVehicleEntity, new IsControlledTag { IsActive = false });
+                ecb.SetComponent(oldVehicleEntity, new AAA_IsControlledTag { IsActive = false });
                 ecb.SetComponent(oldVehicleEntity, new GhostOwner { NetworkId = -1 });
                 if (SystemAPI.HasComponent<PhysicsCollider>(oldVehicleEntity))
                 {
@@ -124,7 +124,7 @@ public partial struct ServerHandleSwitchRpcSystem : ISystem
             // Включение новой машины
             if (targetVehicleEntity != Entity.Null)
             {
-                ecb.SetComponent(targetVehicleEntity, new IsControlledTag { IsActive = true });
+                ecb.SetComponent(targetVehicleEntity, new AAA_IsControlledTag { IsActive = true });
                 ecb.SetComponent(targetVehicleEntity, new GhostOwner { NetworkId = clientNetworkId });
 
                 if (SystemAPI.HasComponent<PhysicsCollider>(targetVehicleEntity))

@@ -5,27 +5,14 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Physics;
+using Unity.Transforms;
 
+public struct RootColliderNeedApply : IComponentData, IEnableableComponent { }
 public struct NewChunkColliderData
 {
     public Entity TargetEntity;
-    //public int JobIndex;
-    //public MinMaxAABB LocalBounds;
-    //public MinMaxAABB WorldBounds;
-
-    //// ДОБАВЛЯЕМ: Ссылка на персональный массив счетчика
-    //public NativeArray<int3> SafeStatus; // z - 1-джоба выполнена
-
-    //// МЕНЯЕМ ТИП: Сюда мы сохраним индивидуальный нативный массив чанка
-    //public NativeArray<BlobAssetReference<Unity.Physics.Collider>> SafeColliderBlob;
 }
 
-
-// ====================================================================
-// ЖЕЛЕЗОБЕТОННЫЙ СЕТЕВОЙ ФИКС: Переносим рендер вслед за расчетной системой!
-// Теперь managed-выгрузка в BRG будет просыпаться строго один раз в кадр,
-// когда фоновые воркеры полностью допекут геометрию без чехарды сетевых откатов.
-// ====================================================================
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)] // WorldSystemFilterFlags.ClientSimulation | 
 //[UpdateInGroup(typeof(SimulationSystemGroup))]
 //[UpdateAfter(typeof(CreateColliderSystem))]
@@ -34,12 +21,8 @@ public partial class ApplyColliderSystem : SystemBase
 {
     // Нативный реестр: Сетевая Сущность -> Её текущий Blob-коллайдер
     private NativeParallelHashMap<Entity, VoxelColliderCleanupMarker> m_ColliderRegistry;
-
-    //private NativeList<BlobAssetReference<Collider>> m_DisposeList;
     protected override void OnCreate()
     {
-        //m_DisposeList = new NativeList<BlobAssetReference<Collider>>(Allocator.Persistent);
-
         // Выделяем память один раз при старте игры. Настройки сети не затрагиваются.
         m_ColliderRegistry = new NativeParallelHashMap<Entity, VoxelColliderCleanupMarker>(128, Allocator.Persistent);
     }
@@ -85,7 +68,7 @@ public partial class ApplyColliderSystem : SystemBase
         // Если ни один чанк вокселей в мире не находится в статусе выпекания графики,
         // система мгновенно выходит, затрачивая ровно 0.00 мс времени Main Thread!
         // ====================================================================
-        var flushQuery = SystemAPI.QueryBuilder().WithAll<ChunkColliderNeedApply>().Build();
+        var flushQuery = SystemAPI.QueryBuilder().WithAll<RootColliderNeedApply>().Build();
         if (flushQuery.IsEmpty)
         {
             return;
@@ -94,166 +77,310 @@ public partial class ApplyColliderSystem : SystemBase
         // Получаем синглтон коллайдеров
         var voxelChildColliderRegistrySingleton = SystemAPI.GetSingleton<VoxelChildColliderRegistrySingleton>();
 
-        // Выделяем временные контейнеры Mono-кадра для передачи в метод ExecuteManagedMeshAllocation
-        var chunksDataArray = new NativeList<NewChunkColliderData>(16, Allocator.Temp);
-        //var childOffsetsList = new NativeList<float3>(16, Allocator.Temp);
-        Entity rootVehicleEntity = Entity.Null;
 
         // ====================================================================
         // ФАЗА 2: СБОРКА ЧАНКОВ, КОТОРЫЕ ПОЛНОСТЬЮ ДОПЕКЛИСЬ НА ЯДРАХ CPU
         // ====================================================================
-        foreach (var (status, chunkEntity) in SystemAPI.Query<
-            RefRO<ChunkColliderNeedApply>
+        foreach (var (status, rootEntity) in SystemAPI.Query<
+            RefRO<RootColliderNeedApply>
             >()
-            .WithAll<ChunkColliderNeedApply>()  // Сущность попадет в выборку, только если у неё присутствует компонент и он включен (Enabled).
+            .WithAll<RootColliderNeedApply>()  // Сущность попадет в выборку, только если у неё присутствует компонент и он включен (Enabled).
             .WithEntityAccess())
         {
-            var chunkColliderData = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
-            // АТОМАРНЫЙ БЕЗОПАСНЫЙ ДЕТЕКТОР:
-            // Если фоновый воркер процессора ВСЁ ЕЩЕ ПИШЕТ данные в Persistent-массивы этого чанка —
-            // мы КАТЕГОРИЧЕСКИ пропускаем его в текущем кадре симуляции!
-            // Вызов .IsCompleted занимает 0.00 мс и НИКОГДА не фризит главный поток игры.
-            if (!chunkColliderData.SafeStatus.IsCreated || chunkColliderData.SafeStatus[0].z != 1)
+            EntityManager.SetComponentEnabled<RootColliderNeedApply>(rootEntity, false);
+
+            // Проверяем, есть ли у корня встроенный буфер иерархии
+            if (SystemAPI.HasBuffer<LinkedEntityGroup>(rootEntity))
             {
-                continue;
+                // 1. Получаем доступ к буферу связей
+                DynamicBuffer<LinkedEntityGroup> linkedGroup = SystemAPI.GetBuffer<LinkedEntityGroup>(rootEntity);
+
+                // Выделяем временные контейнеры Mono-кадра для передачи в метод ExecuteManagedMeshAllocation
+                var chunksDataArray = new NativeList<NewChunkColliderData>(16, Allocator.Temp);
+                //var childOffsetsList = new NativeList<float3>(16, Allocator.Temp);
+                //Entity rootVehicleEntity = Entity.Null;
+
+                //// 2. Создаем лукапы для проверки компонентов на дочерних сущностях
+                //var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+                //var chunkDataLookup = SystemAPI.GetComponentLookup<AAA_VoxelModelHeader>(true); // Ваш компонент-маркер чанка
+
+                // 3. Обходим буфер. Начинаем с i = 1, так как под индексом 0 лежит сам Root!
+                for (int i = 1; i < linkedGroup.Length; i++)
+                {
+                    Entity childEntity = linkedGroup[i].Value;
+
+                    // Нам нужно отсеять промежуточные Узлы (Sub-Roots) и взять только Чанки.
+                    // Для этого проверяем наличие вашего специфичного компонента чанка:
+                    if (SystemAPI.HasComponent<AAA_VoxelModelHeader>(childEntity))
+                    {
+                        // Ура! Это гарантированно дочерний чанк именно этой машины
+                        if (SystemAPI.HasComponent<LocalTransform>(childEntity))
+                        {
+                            //LocalTransform chunkTransform = SystemAPI.GetComponent<LocalTransform>(childEntity);
+
+                            //// Достаем локальную позицию для запекания в CompoundCollider
+                            //float3 localPos = chunkTransform.Position;
+
+                            //var chunkColliderData = voxelChildColliderRegistrySingleton.Registry[childEntity];
+
+                            chunksDataArray.Add(new NewChunkColliderData
+                            {
+                                TargetEntity = childEntity,
+                            });
+                        }
+                    }
+                }
+
+                int totalReadyCount = chunksDataArray.Length;
+                int validCollidersCount = 0;
+
+                for (int i = 0; i < totalReadyCount; i++)
+                {
+                    var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+                    //int3 finalCounts = dataFromSingleton.SafeStatus[0];
+                    //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
+                    if (dataFromSingleton.GeometryArray.IsCreated)
+                    {
+                        validCollidersCount++;
+                    }
+                }
+
+                BlobAssetReference<Unity.Physics.Collider> finalVehicleCompoundCollider = default;
+
+                if (validCollidersCount > 0)
+                {
+                    var compoundInstances = new NativeArray<CompoundCollider.ColliderBlobInstance>(validCollidersCount, Allocator.Temp);
+                    int currentInstanceIdx = 0;
+
+                    for (int i = 0; i < totalReadyCount; i++)
+                    {
+                        var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+                        //int3 finalCounts = dataFromSingleton.SafeStatus[0];
+                        //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
+                        if (dataFromSingleton.GeometryArray.IsCreated)
+                        {
+                            // Создаем BlobAssetReference на главном потоке (быстрая операция)
+                            BlobAssetReference<Unity.Physics.Collider> newColliderBlob = Unity.Physics.BoxCollider.Create(dataFromSingleton.GeometryArray[0]);
+
+                            compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
+                            {
+                                Collider = newColliderBlob, // dataFromSingleton.SafeColliderBlob[0], //chunksDataArray[i].SafeColliderBlob[0],
+                                CompoundFromChild = new RigidTransform(quaternion.identity, dataFromSingleton.LocalOffsetWithPivot),//childOffsetsList[i]
+                                Entity = chunksDataArray[i].TargetEntity
+                            };
+
+                            currentInstanceIdx++;
+                        }
+                    }
+
+                    if (compoundInstances.Length > 0)
+                    {
+                        finalVehicleCompoundCollider = CompoundCollider.Create(compoundInstances);
+                    }
+
+                    // 3. ИСПРАВЛЕНИЕ УТЕЧКИ: Проходим по массиву и уничтожаем оригинальные временные Blob-активы чанков
+                    for (int i = 0; i < compoundInstances.Length; i++)
+                    {
+                        if (compoundInstances[i].Collider.IsCreated)
+                        {
+                            // Освобождаем неуправляемую память каждого дочернего кубика
+                            compoundInstances[i].Collider.Dispose();
+                        }
+                    }
+                    compoundInstances.Dispose();
+                }
+
+                try
+                {
+                    ExecuteManagedCollider(
+                        ref this.CheckedStateRef,
+                        chunksDataArray,
+                        rootEntity,
+                        finalVehicleCompoundCollider
+                    );
+                }
+                finally
+                {
+                    for (int i = 0; i < totalReadyCount; i++)
+                    {
+                        Entity chunkEntity = chunksDataArray[i].TargetEntity;
+
+                        if (EntityManager.Exists(chunkEntity))
+                        {
+                            EntityManager.SetComponentEnabled<ChunkColliderNeedApply>(chunkEntity, false); // Выключили до следующего взрыва!
+                        }
+
+                        // очищаем данные о статусах
+                        if (voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length > 0)
+                        {
+                            for (int j = 0; j < voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length; j++)
+                            {
+                                var safeStatusItem = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
+                                if (safeStatusItem.SafeStatus.IsCreated)
+                                {
+                                    //safeStatusItem.SafeStatus.Dispose();
+                                    //safeStatusItem.SafeStatus = default;
+                                    // сбрасываем статус джобы.
+                                    safeStatusItem.SafeStatus[0] = new int3(0, 0, 0);
+                                }
+                                voxelChildColliderRegistrySingleton.Registry[chunkEntity] = safeStatusItem;
+                            }
+                        }
+                    }
+
+                    chunksDataArray.Dispose();
+                }
+
             }
 
-            rootVehicleEntity = chunkColliderData.RootVehicleEntity; //chunkColliderData.ValueRO.RootVehicleEntity;
-
-            // Заполняем плоскую структуру NewChunkGraphicsData прямыми С++ ссылками на Persistent массивы
-            chunksDataArray.Add(new NewChunkColliderData
-            {
-                TargetEntity = chunkEntity,
-                //LocalBounds = chunkColliderData.ValueRO.LocalBounds,
-                //WorldBounds = chunkColliderData.ValueRO.WorldBounds,
-                //SafeStatus = chunkColliderData.ValueRO.SafeCounter,
-                //SafeColliderBlob = chunkColliderData.ValueRO.SafeColliderBlob,
-
-            });
-
-            //var isClient = World.IsClient();
-            //string textWorld = isClient ? "Client" : "Server";
-
-            //UnityEngine.Debug.Log($"[{textWorld}] Добавление NewChunkGraphicsData для {flushTag.ValueRO.index}");
 
 
-            //childOffsetsList.Add(chunkColliderData.LocalOffsetWithPivot);
+            //var chunkColliderData = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
+            //// АТОМАРНЫЙ БЕЗОПАСНЫЙ ДЕТЕКТОР:
+            //// Если фоновый воркер процессора ВСЁ ЕЩЕ ПИШЕТ данные в Persistent-массивы этого чанка —
+            //// мы КАТЕГОРИЧЕСКИ пропускаем его в текущем кадре симуляции!
+            //// Вызов .IsCompleted занимает 0.00 мс и НИКОГДА не фризит главный поток игры.
+            //if (!chunkColliderData.SafeStatus.IsCreated || chunkColliderData.SafeStatus[0].z != 1)
+            //{
+            //    continue;
+            //}
+
+            //rootVehicleEntity = chunkColliderData.RootVehicleEntity; //chunkColliderData.ValueRO.RootVehicleEntity;
+
+            //// Заполняем плоскую структуру NewChunkGraphicsData прямыми С++ ссылками на Persistent массивы
+            //chunksDataArray.Add(new NewChunkColliderData
+            //{
+            //    TargetEntity = chunkEntity,
+            //    //LocalBounds = chunkColliderData.ValueRO.LocalBounds,
+            //    //WorldBounds = chunkColliderData.ValueRO.WorldBounds,
+            //    //SafeStatus = chunkColliderData.ValueRO.SafeCounter,
+            //    //SafeColliderBlob = chunkColliderData.ValueRO.SafeColliderBlob,
+
+            //});
+
+            ////var isClient = World.IsClient();
+            ////string textWorld = isClient ? "Client" : "Server";
+
+            ////UnityEngine.Debug.Log($"[{textWorld}] Добавление NewChunkGraphicsData для {flushTag.ValueRO.index}");
+
+
+            ////childOffsetsList.Add(chunkColliderData.LocalOffsetWithPivot);
         }
 
-        // Если в текущем кадре ни один из чанков еще до конца не завершил фоновые вычисления —
-        // мгновенно закрываем контекст кадра, не нагружая процессор вхолостую!
-        if (chunksDataArray.Length == 0)
-        {
-            chunksDataArray.Dispose();
-            //childOffsetsList.Dispose();
-            return;
-        }
+        //// Если в текущем кадре ни один из чанков еще до конца не завершил фоновые вычисления —
+        //// мгновенно закрываем контекст кадра, не нагружая процессор вхолостую!
+        //if (chunksDataArray.Length == 0)
+        //{
+        //    chunksDataArray.Dispose();
+        //    //childOffsetsList.Dispose();
+        //    return;
+        //}
 
         // ====================================================================
         // ФАЗА 3: СБОРКА МОНОЛИТНОГО COMPOUND COLLIDER АВТОМОБИЛЯ ИЗ ГОТОВЫХ ЧАНКОВ
         // ПРИМЕНЕНО ПРАВИЛО: замена знаков отношений на слова
         // ====================================================================
-        int totalReadyCount = chunksDataArray.Length;
-        int validCollidersCount = 0;
+        //int totalReadyCount = chunksDataArray.Length;
+        //int validCollidersCount = 0;
 
-        for (int i = 0; i < totalReadyCount; i++)
-        {
-            var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
-            //int3 finalCounts = dataFromSingleton.SafeStatus[0];
-            //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
-            if (dataFromSingleton.GeometryArray.IsCreated)
-            {
-                validCollidersCount++;
-            }
-        }
+        //for (int i = 0; i < totalReadyCount; i++)
+        //{
+        //    var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+        //    //int3 finalCounts = dataFromSingleton.SafeStatus[0];
+        //    //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated) // && chunksDataArray[i].SafeColliderBlob.IsCreated
+        //    if (dataFromSingleton.GeometryArray.IsCreated)
+        //    {
+        //        validCollidersCount++;
+        //    }
+        //}
 
-        BlobAssetReference<Unity.Physics.Collider> finalVehicleCompoundCollider = default;
+        //BlobAssetReference<Unity.Physics.Collider> finalVehicleCompoundCollider = default;
 
-        if (validCollidersCount > 0)
-        {
-            var compoundInstances = new NativeArray<CompoundCollider.ColliderBlobInstance>(validCollidersCount, Allocator.Temp);
-            int currentInstanceIdx = 0;
+        //if (validCollidersCount > 0)
+        //{
+        //    var compoundInstances = new NativeArray<CompoundCollider.ColliderBlobInstance>(validCollidersCount, Allocator.Temp);
+        //    int currentInstanceIdx = 0;
 
-            for (int i = 0; i < totalReadyCount; i++)
-            {
-                var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
-                //int3 finalCounts = dataFromSingleton.SafeStatus[0];
-                //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
-                if (dataFromSingleton.GeometryArray.IsCreated)
-                {
-                    // Создаем BlobAssetReference на главном потоке (быстрая операция)
-                    BlobAssetReference<Unity.Physics.Collider> newColliderBlob = Unity.Physics.BoxCollider.Create(dataFromSingleton.GeometryArray[0]);
+        //    for (int i = 0; i < totalReadyCount; i++)
+        //    {
+        //        var dataFromSingleton = voxelChildColliderRegistrySingleton.Registry[chunksDataArray[i].TargetEntity];
+        //        //int3 finalCounts = dataFromSingleton.SafeStatus[0];
+        //        //if (finalCounts.x > 0 && dataFromSingleton.SafeColliderBlob[0].IsCreated)// && chunksDataArray[i].SafeColliderBlob.IsCreated
+        //        if (dataFromSingleton.GeometryArray.IsCreated)
+        //        {
+        //            // Создаем BlobAssetReference на главном потоке (быстрая операция)
+        //            BlobAssetReference<Unity.Physics.Collider> newColliderBlob = Unity.Physics.BoxCollider.Create(dataFromSingleton.GeometryArray[0]);
 
-                    compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
-                    {
-                        Collider = newColliderBlob, // dataFromSingleton.SafeColliderBlob[0], //chunksDataArray[i].SafeColliderBlob[0],
-                        CompoundFromChild = new RigidTransform(quaternion.identity, dataFromSingleton.LocalOffsetWithPivot),//childOffsetsList[i]
-                        Entity = chunksDataArray[i].TargetEntity
-                    };
+        //            compoundInstances[currentInstanceIdx] = new CompoundCollider.ColliderBlobInstance
+        //            {
+        //                Collider = newColliderBlob, // dataFromSingleton.SafeColliderBlob[0], //chunksDataArray[i].SafeColliderBlob[0],
+        //                CompoundFromChild = new RigidTransform(quaternion.identity, dataFromSingleton.LocalOffsetWithPivot),//childOffsetsList[i]
+        //                Entity = chunksDataArray[i].TargetEntity
+        //            };
 
-                    currentInstanceIdx++;
-                }
-            }
+        //            currentInstanceIdx++;
+        //        }
+        //    }
 
-            if (compoundInstances.Length > 0)
-            {
-                finalVehicleCompoundCollider = CompoundCollider.Create(compoundInstances);
-            }
+        //    if (compoundInstances.Length > 0)
+        //    {
+        //        finalVehicleCompoundCollider = CompoundCollider.Create(compoundInstances);
+        //    }
 
-            // 3. ИСПРАВЛЕНИЕ УТЕЧКИ: Проходим по массиву и уничтожаем оригинальные временные Blob-активы чанков
-            for (int i = 0; i < compoundInstances.Length; i++)
-            {
-                if (compoundInstances[i].Collider.IsCreated)
-                {
-                    // Освобождаем неуправляемую память каждого дочернего кубика
-                    compoundInstances[i].Collider.Dispose();
-                }
-            }
-            compoundInstances.Dispose();
-        }
+        //    // 3. ИСПРАВЛЕНИЕ УТЕЧКИ: Проходим по массиву и уничтожаем оригинальные временные Blob-активы чанков
+        //    for (int i = 0; i < compoundInstances.Length; i++)
+        //    {
+        //        if (compoundInstances[i].Collider.IsCreated)
+        //        {
+        //            // Освобождаем неуправляемую память каждого дочернего кубика
+        //            compoundInstances[i].Collider.Dispose();
+        //        }
+        //    }
+        //    compoundInstances.Dispose();
+        //}
 
         //childOffsetsList.Dispose();
 
-        try
-        {
-            ExecuteManagedCollider(
-                ref this.CheckedStateRef,
-                chunksDataArray,
-                rootVehicleEntity,
-                finalVehicleCompoundCollider
-            );
-        }
-        finally
-        {
-            for (int i = 0; i < totalReadyCount; i++)
-            {
-                Entity chunkEntity = chunksDataArray[i].TargetEntity;
+        //try
+        //{
+        //    ExecuteManagedCollider(
+        //        ref this.CheckedStateRef,
+        //        chunksDataArray,
+        //        rootVehicleEntity,
+        //        finalVehicleCompoundCollider
+        //    );
+        //}
+        //finally
+        //{
+        //    for (int i = 0; i < totalReadyCount; i++)
+        //    {
+        //        Entity chunkEntity = chunksDataArray[i].TargetEntity;
 
-                if (EntityManager.Exists(chunkEntity))
-                {
-                    EntityManager.SetComponentEnabled<ChunkColliderNeedApply>(chunkEntity, false); // Выключили до следующего взрыва!
-                }
+        //        if (EntityManager.Exists(chunkEntity))
+        //        {
+        //            EntityManager.SetComponentEnabled<ChunkColliderNeedApply>(chunkEntity, false); // Выключили до следующего взрыва!
+        //        }
 
-                // очищаем данные о статусах
-                if (voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length > 0)
-                {
-                    for (int j = 0; j < voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length; j++)
-                    {
-                        var safeStatusItem = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
-                        if (safeStatusItem.SafeStatus.IsCreated)
-                        {
-                            //safeStatusItem.SafeStatus.Dispose();
-                            //safeStatusItem.SafeStatus = default;
-                            // сбрасываем статус джобы.
-                            safeStatusItem.SafeStatus[0] = new int3(0, 0, 0);
-                        }
-                        voxelChildColliderRegistrySingleton.Registry[chunkEntity] = safeStatusItem;
-                    }
-                }
-            }
+        //        // очищаем данные о статусах
+        //        if (voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length > 0)
+        //        {
+        //            for (int j = 0; j < voxelChildColliderRegistrySingleton.Registry[chunkEntity].SafeStatus.Length; j++)
+        //            {
+        //                var safeStatusItem = voxelChildColliderRegistrySingleton.Registry[chunkEntity];
+        //                if (safeStatusItem.SafeStatus.IsCreated)
+        //                {
+        //                    //safeStatusItem.SafeStatus.Dispose();
+        //                    //safeStatusItem.SafeStatus = default;
+        //                    // сбрасываем статус джобы.
+        //                    safeStatusItem.SafeStatus[0] = new int3(0, 0, 0);
+        //                }
+        //                voxelChildColliderRegistrySingleton.Registry[chunkEntity] = safeStatusItem;
+        //            }
+        //        }
+        //    }
 
-            chunksDataArray.Dispose();
-        }
+        //    chunksDataArray.Dispose();
+        //}
 
         // Гарантируем, что джобы завершились перед тем, как мы начнем чистить память на главном потоке
         this.CheckedStateRef.Dependency.Complete();
@@ -331,22 +458,48 @@ public partial class ApplyColliderSystem : SystemBase
                 // 3. ЗАПИСЫВАЕМ НОВЫЕ ВАЛИДНЫЕ ДАННЫЕ
                 state.EntityManager.SetComponentData(rootVehicleEntity, new PhysicsCollider { Value = finalVehicleCompoundCollider });
 
-                // 4. ЗАЩИТА МАССЫ ОТ NaN (Деления на ноль)
-                var massProperties = finalVehicleCompoundCollider.Value.MassProperties;
-
-                // ИСПРАВЛЕНИЕ: Извлекаем тензор инерции через InertiaTensorWithOrientation
-                float3 inertia = massProperties.MassDistribution.InertiaTensor;
-
-                // Проверяем тензор инерции, если он сломан/нулевой (при пустом или недостроенном воксельном меше)
-                if (inertia.x <= 0f || inertia.y <= 0f || inertia.z <= 0f)
+                byte typeCollider = 0;
+                if (SystemAPI.HasComponent<AAA_RootData>(rootVehicleEntity))
                 {
-                    // Подставляем безопасную единичную сферу, чтобы физика Unity не выдала NaN
-                    massProperties = MassProperties.UnitSphere;
+                    typeCollider = SystemAPI.GetComponentRO<AAA_RootData>(rootVehicleEntity).ValueRO.TypeCollider;
                 }
 
-                var dynamicMass = PhysicsMass.CreateDynamic(massProperties, 1000.0f);
-                dynamicMass.CenterOfMass = float3.zero;
-                state.EntityManager.SetComponentData(rootVehicleEntity, dynamicMass);
+                if (typeCollider == 0)
+                {
+                    // Вручную забиваем структуру нулями
+                    var kinematicMass = new PhysicsMass
+                    {
+                        Transform = RigidTransform.identity,
+                        InverseMass = 0f,                // 1 / бесконечность = 0 кг инверсного веса
+                        InverseInertia = float3.zero,    // Нулевая инверсная инерция (тело нельзя повернуть ударом)
+                        CenterOfMass = float3.zero
+                    };
+                    kinematicMass.CenterOfMass = float3.zero;
+
+                    state.EntityManager.SetComponentData(rootVehicleEntity, kinematicMass);
+
+                    state.EntityManager.SetComponentData(rootVehicleEntity, new PhysicsVelocity());
+                }
+                else
+                {
+                    // 4. ЗАЩИТА МАССЫ ОТ NaN (Деления на ноль)
+                    var massProperties = finalVehicleCompoundCollider.Value.MassProperties;
+
+                    // ИСПРАВЛЕНИЕ: Извлекаем тензор инерции через InertiaTensorWithOrientation
+                    float3 inertia = massProperties.MassDistribution.InertiaTensor;
+
+                    // Проверяем тензор инерции, если он сломан/нулевой (при пустом или недостроенном воксельном меше)
+                    if (inertia.x <= 0f || inertia.y <= 0f || inertia.z <= 0f)
+                    {
+                        // Подставляем безопасную единичную сферу, чтобы физика Unity не выдала NaN
+                        massProperties = MassProperties.UnitSphere;
+                    }
+
+                    var dynamicMass = PhysicsMass.CreateDynamic(massProperties, 1000.0f);
+                    dynamicMass.CenterOfMass = float3.zero;
+                    state.EntityManager.SetComponentData(rootVehicleEntity, dynamicMass);
+
+                }
 
 
                 state.EntityManager.SetComponentData(rootVehicleEntity, new AAA_MovementComponent

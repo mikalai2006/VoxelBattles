@@ -14,7 +14,7 @@ public static class VoxelRaycastHelper
     /// Находит ближайший существующий воксель внутри чанка вдоль луча.
     /// </summary>
     public static RaycastVoxelResult RaycastChunk(
-        DynamicBuffer<LocalChunkDestructionMask> destructionMask,
+        DynamicBuffer<AAA_ChunkDestructionMask> destructionMask,
         float3 rayStart,
         float3 rayDir,
         float maxDistance)

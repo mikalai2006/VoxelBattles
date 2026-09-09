@@ -10,7 +10,7 @@ public struct ChunkMeshNeedCreate : IComponentData, IEnableableComponent { }
 public struct ChunkMeshNeedApply : IComponentData, IEnableableComponent { }
 
 // Хэш модели, чтобы заглянуть в GlobalVoxelModelCache
-public struct VoxelModelHeader : IComponentData
+public struct AAA_VoxelModelHeader : IComponentData
 {
     // Этот атрибут говорит Netcode: "Отправь это поле клиенту ровно ОДИН РАЗ при спавне!"
     // Так как значение не меняется, в игровых кадрах трафик будет равен строго 0 байт.
@@ -18,13 +18,13 @@ public struct VoxelModelHeader : IComponentData
 }
 
 // Трехмерный индекс этого чанка (например: 0, 1, 0)
-public struct ChunkIndexComponent : IComponentData
+public struct AAA_ChunkIndex : IComponentData
 {
     [GhostField] public int3 Value;
 }
 
 // Этот компонент теперь корректно сериализуется Netcode
-public struct NetworkParent : IComponentData
+public struct AAA_NetworkParent : IComponentData
 {
     // Netcode автоматически переведет локальный Entity сервера в сетевой ID,
     // а на клиенте превратит его в локальный Entity клиента.
@@ -35,40 +35,49 @@ public struct NetworkParent : IComponentData
 }
 
 // Вешается на Узел (Sub-Root). Хранит локальную Entity Корня.
-public struct PendingNodeToRoot : IComponentData
+public struct AAA_PendingNodeToRoot : IComponentData
 {
     public Entity LocalRootEntity;
 }
 
 // Вешается на Чанк. Хранит локальную Entity Узла.
-public struct PendingChunkToNode : IComponentData
+public struct AAA_PendingChunkToNode : IComponentData
 {
     public Entity LocalNodeEntity;
 }
 
 // Тег корневой сущности воксельного объекта
-public struct VoxelModelRootTag : IComponentData { }
+public struct AAA_VoxelModelRootTag : IComponentData { }
 //public struct NeedsMeshRebuildTag : IComponentData { }
 public struct VoxelChunkLinkedTag : IComponentData { }
 
 // Настройки модели на корневом объекте
-public struct VoxelModelRootData : IComponentData
+public struct AAA_VoxelModelRootData : IComponentData
 {
     // ААА-ФИКС: Помечаем поле для Netcode. 
     // Сервер отправит его клиенту ОДИН РАЗ при спавне. Трафик в рантайме = 0!
     [GhostField] public uint ConfigHashName;
+    [GhostField] public uint ParentGhostId;
+}
+
+public struct AAA_RootData : IComponentData
+{
+    public int countChunks;
+    public int countApplyChunks;
+    public byte TypeCollider;
+    public Entity RootEntity;
 }
 
 // ПЕРЕИМЕНОВАНО: Чисто локальный unmanaged-буфер маски целостности чанка. 
 // Он НЕ реплицируется по сети, обеспечивая нулевой оверхед на сетевой спавн!
 [InternalBufferCapacity(0)]
-public struct LocalChunkDestructionMask : IBufferElementData
+public struct AAA_ChunkDestructionMask : IBufferElementData
 {
     //[GhostField(Quantization = 0)]
     public ulong Value;
 }
 // Трекер прогресса загрузки маски чанка
-public struct ChunkSyncTracker : IComponentData
+public struct AAA_ChunkSyncTracker : IComponentData
 {
     // Каждый бит отвечает за свой кусок: 
     // кусок 0 = 1 (0001), кусок 1 = 2 (0010), кусок 2 = 4 (0100), кусок 3 = 8 (1000)

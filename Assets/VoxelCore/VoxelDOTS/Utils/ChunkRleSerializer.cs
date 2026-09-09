@@ -114,7 +114,7 @@ public static class ChunkRleSerializer
     public static void SendChunkMaskToClient(
         ref EntityCommandBuffer ecb,
         uint ghostId,
-        DynamicBuffer<LocalChunkDestructionMask> maskBuffer,
+        DynamicBuffer<AAA_ChunkDestructionMask> maskBuffer,
         Entity targetConnectionEntity)
     {
         // Проверяем на всякий случай размер буфера
@@ -287,10 +287,10 @@ public static class ChunkRleSerializer
     //    }
     //}
 
-    public static void CompressToRle(NativeArray<LocalChunkDestructionMask> maskArray, ref FixedList4096Bytes<ulong> outputList)
+    public static void CompressToRle(NativeArray<AAA_ChunkDestructionMask> maskArray, ref FixedList4096Bytes<ulong> outputList)
     {
         // 1. Приводим массив структур к массиву ulong (без аллокаций)
-        NativeArray<ulong> ulongArray = maskArray.Reinterpret<LocalChunkDestructionMask, ulong>();
+        NativeArray<ulong> ulongArray = maskArray.Reinterpret<AAA_ChunkDestructionMask, ulong>();
 
         // 2. Явно выставляем длину списка, чтобы аллоцировать внутренние элементы
         outputList.Length = ulongArray.Length;
@@ -301,7 +301,7 @@ public static class ChunkRleSerializer
             outputList[i] = ulongArray[i];
         }
     }
-    public static void DecompressFromRle(in FixedList4096Bytes<ulong> rleData, DynamicBuffer<LocalChunkDestructionMask> targetBuffer)
+    public static void DecompressFromRle(in FixedList4096Bytes<ulong> rleData, DynamicBuffer<AAA_ChunkDestructionMask> targetBuffer)
     {
         // 1. Готовим буфер под полный размер маски чанка (512 элементов ulong = 32^3 бит)
         targetBuffer.Clear();
@@ -318,7 +318,7 @@ public static class ChunkRleSerializer
         }
     }
 
-    public static void CompressToRle(NativeArray<LocalChunkDestructionMask> maskArray, ref FixedList512Bytes<byte> outputList)
+    public static void CompressToRle(NativeArray<AAA_ChunkDestructionMask> maskArray, ref FixedList512Bytes<byte> outputList)
     {
         outputList.Clear();
 
@@ -393,7 +393,7 @@ public static class ChunkRleSerializer
         customBytes.Dispose();
     }
 
-    public static void DecompressFromRle(in FixedList512Bytes<byte> rleData, DynamicBuffer<LocalChunkDestructionMask> targetBuffer)
+    public static void DecompressFromRle(in FixedList512Bytes<byte> rleData, DynamicBuffer<AAA_ChunkDestructionMask> targetBuffer)
     {
         if (targetBuffer.Length < 512) targetBuffer.ResizeUninitialized(512);
 
@@ -443,7 +443,7 @@ public static class ChunkRleSerializer
             // Если type == 0, то ulongValue остается равным 0UL (полностью уничтожен)
 
             // Пишем готовую пачку из 64 вокселей строго по индексу памяти на клиенте
-            targetBuffer[c] = new LocalChunkDestructionMask { Value = ulongValue };
+            targetBuffer[c] = new AAA_ChunkDestructionMask { Value = ulongValue };
         }
 
         ulongTypes.Dispose();

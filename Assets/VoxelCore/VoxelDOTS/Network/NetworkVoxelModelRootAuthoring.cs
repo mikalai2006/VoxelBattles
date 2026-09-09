@@ -12,22 +12,26 @@ public class NetworkVoxelModelRootAuthoring : MonoBehaviour
             var entity = GetEntity(TransformUsageFlags.Dynamic);
 
             // 1. Маркируем сущность как сетевой корень воксельного объекта
-            AddComponent<VoxelModelRootTag>(entity);
+            AddComponent<AAA_VoxelModelRootTag>(entity);
 
             // 2. Добавляем unmanaged-компонент, куда сервер при спавне запишет uint хэш модели
-            AddComponent<VoxelModelRootData>(entity);
+            AddComponent<AAA_VoxelModelRootData>(entity);
 
             AddComponent<AAA_InputComponent>(entity);
 
             AddComponent<AAA_MovementComponent>(entity);
+
+            AddComponent<AAA_RootData>(entity);
 
             // ВАЖНО: Буфер LinkedEntityGroup для иерархии репликации Netcode 
             // добавит на этот префаб автоматически, когда вы настроите его как Ghost в инспекторе.
 
             // 1. ЖЕСТКО ДОБАВЛЯЕМ КОМПОНЕНТ ПРИ ЗАПЕКАНИИ. 
             // Запекаем компонент в архетип префаба со значением false по умолчанию
-            AddComponent(entity, new IsControlledTag { IsActive = false });
+            AddComponent(entity, new AAA_IsControlledTag { IsActive = false });
 
+            AddComponent<RootColliderNeedApply>(entity);
+            SetComponentEnabled<RootColliderNeedApply>(entity, false);
 
             ////===============Physics==========================================
             //// Создаем крошечную пустую сферу, чтобы компонент PhysicsCollider был валидным

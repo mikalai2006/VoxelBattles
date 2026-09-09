@@ -8,7 +8,7 @@ using Unity.Physics;
 [BurstCompile] //(CompileSynchronously = true)
 public struct GenerateChunkColliderJob : IJob
 {
-    [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;
+    [ReadOnly] public NativeArray<AAA_ChunkDestructionMask>.ReadOnly LiveMask;
     [ReadOnly] public NativeArray<byte> FlattenedModelColors;
     public int ChunkOffsetInFlattenedArray;
 
@@ -682,7 +682,7 @@ public struct PackGreedyMeshToBoxesJob : IJob
 public struct PhysicsGreedyJobSafeDirect : IJob
 {
     // ¬ходные данные Ч —“–ќ√јя “ќ„Ќјя  ќѕ»я параметров вашей графической джобы
-    [ReadOnly] public NativeArray<LocalChunkDestructionMask>.ReadOnly LiveMask;
+    [ReadOnly] public NativeArray<AAA_ChunkDestructionMask>.ReadOnly LiveMask;
     [ReadOnly] public NativeArray<byte> FlattenedModelColors;
     public int ChunkOffsetInFlattenedArray;
 

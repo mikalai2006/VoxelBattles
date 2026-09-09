@@ -120,9 +120,9 @@ public partial struct VoxelExplosionServerSystem : ISystem
                         GlobalVoxelModelCache cache = cacheQuery.GetSingleton<GlobalVoxelModelCache>();
 
                         // Извлекаем хэш конфигурации модели из корневой сущности транспорта
-                        if (em.HasComponent<VoxelModelRootData>(rootVehicleEntity))
+                        if (em.HasComponent<AAA_VoxelModelRootData>(rootVehicleEntity))
                         {
-                            uint vehicleModelHash = em.GetComponentData<VoxelModelRootData>(rootVehicleEntity).ConfigHashName;
+                            uint vehicleModelHash = em.GetComponentData<AAA_VoxelModelRootData>(rootVehicleEntity).ConfigHashName;
 
                             if (cache.Templates.TryGetValue(vehicleModelHash, out var template))
                             {
@@ -183,10 +183,10 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                     {
                                         Entity childEntity = children[ii].Value;
 
-                                        if (em.HasComponent<ChunkIndexComponent>(childEntity))
+                                        if (em.HasComponent<AAA_ChunkIndex>(childEntity))
                                         {
                                             // Считываем точные int3 координаты этого конкретного чанка
-                                            int3 chunkCoords = em.GetComponentData<ChunkIndexComponent>(childEntity).Value;
+                                            int3 chunkCoords = em.GetComponentData<AAA_ChunkIndex>(childEntity).Value;
 
                                             // Сверяем с targetChunkCoords. Благодаря фиксу пивота, они совпадут идеально!
                                             if (chunkCoords.x == targetChunkCoords.x &&
@@ -211,13 +211,13 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                 // ====================================================================
                                 // ОТПРАВКА ЗАПРОСА И АКТИВАЦИЯ ТЕГА
                                 // ====================================================================
-                                if (hitChunkEntity != Entity.Null && em.HasComponent<LocalChunkDestructionMask>(hitChunkEntity))
+                                if (hitChunkEntity != Entity.Null && em.HasComponent<AAA_ChunkDestructionMask>(hitChunkEntity))
                                 {
                                     //int totalVoxels = 0;
                                     //int totalDestroyedVoxels = 0;
                                     bool hasChanges = false;
 
-                                    DynamicBuffer<LocalChunkDestructionMask> destructionMask = state.EntityManager.GetBuffer<LocalChunkDestructionMask>(hitChunkEntity);
+                                    DynamicBuffer<AAA_ChunkDestructionMask> destructionMask = state.EntityManager.GetBuffer<AAA_ChunkDestructionMask>(hitChunkEntity);
                                     //var localMaskCache = destructionMask.ToNativeArray(Allocator.Temp);
 
                                     // Радиус взрыва в вокселях
@@ -261,7 +261,7 @@ public partial struct VoxelExplosionServerSystem : ISystem
                                                     int bitOffset = flatIndex & 63;   // Остаток от деления на 64 (сдвиг бита)
                                                     ulong currentMaskBit = 1UL << bitOffset;
 
-                                                    LocalChunkDestructionMask maskElement = destructionMask[ulongIndex];
+                                                    AAA_ChunkDestructionMask maskElement = destructionMask[ulongIndex];
 
                                                     // Если блок еще существует (бит равен 1) — уничтожаем его
                                                     if ((maskElement.Value & currentMaskBit) != 0)

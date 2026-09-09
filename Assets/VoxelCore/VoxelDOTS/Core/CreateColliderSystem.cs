@@ -35,10 +35,10 @@ public partial struct CreateColliderSystem : ISystem
     // Внутри объявления структуры вашей системы (ISystem):
     //private ComponentLookup<ChunkActiveState> m_ActiveStateLookup;
     //private ComponentLookup<ChunkColliderData> m_ChunkColliderDataLookup;
-    private BufferLookup<LocalChunkDestructionMask> m_MaskBufferLookup;
+    private BufferLookup<AAA_ChunkDestructionMask> m_MaskBufferLookup;
     private ComponentLookup<Parent> m_ParentLookup;
-    private ComponentLookup<ChunkIndexComponent> m_ChunkIndexLookup;
-    private ComponentLookup<VoxelModelHeader> m_ModelHeaderLookup;
+    private ComponentLookup<AAA_ChunkIndex> m_ChunkIndexLookup;
+    private ComponentLookup<AAA_VoxelModelHeader> m_ModelHeaderLookup;
     private ComponentLookup<GhostInstance> m_GhostInstanceLookup;
     private ComponentLookup<LocalToWorld> m_LocalToWorldLookup;
     private ComponentLookup<ChunkColliderNeedCreate> m_ChunkColliderNeedCreate;
@@ -74,11 +74,11 @@ public partial struct CreateColliderSystem : ISystem
         // Инициализируем лукапы при создании системы // true = ReadOnly
         //m_ActiveStateLookup = state.GetComponentLookup<ChunkActiveState>();
         //m_ChunkColliderDataLookup = state.GetComponentLookup<ChunkColliderData>();
-        m_MaskBufferLookup = state.GetBufferLookup<LocalChunkDestructionMask>(true);
+        m_MaskBufferLookup = state.GetBufferLookup<AAA_ChunkDestructionMask>(true);
         m_ParentLookup = state.GetComponentLookup<Parent>(true);
         m_GhostInstanceLookup = state.GetComponentLookup<GhostInstance>(true);
-        m_ChunkIndexLookup = state.GetComponentLookup<ChunkIndexComponent>(true);
-        m_ModelHeaderLookup = state.GetComponentLookup<VoxelModelHeader>(true);
+        m_ChunkIndexLookup = state.GetComponentLookup<AAA_ChunkIndex>(true);
+        m_ModelHeaderLookup = state.GetComponentLookup<AAA_VoxelModelHeader>(true);
         m_GhostInstanceLookup = state.GetComponentLookup<GhostInstance>(true);
         m_LocalToWorldLookup = state.GetComponentLookup<LocalToWorld>(true);
         m_ChunkColliderNeedCreate = state.GetComponentLookup<ChunkColliderNeedCreate>(false);
@@ -87,9 +87,9 @@ public partial struct CreateColliderSystem : ISystem
         // ИСПРАВЛЕНИЕ 1: Использование кэшированного EntityQuery (O(1) скорость)
         // Предполагается, что m_RebuildQuery инициализирован в OnCreate:
         using (var builder = new EntityQueryBuilder(Allocator.Temp)
-        .WithAll<LocalChunkDestructionMask>() // Билдер сам определит, что это буфер!
-        .WithAll<ChunkIndexComponent>()
-        .WithAll<VoxelModelHeader>()
+        .WithAll<AAA_ChunkDestructionMask>() // Билдер сам определит, что это буфер!
+        .WithAll<AAA_ChunkIndex>()
+        .WithAll<AAA_VoxelModelHeader>()
         .WithAll<GhostInstance>()
         .WithAll<ChunkColliderNeedCreate>())
         {
